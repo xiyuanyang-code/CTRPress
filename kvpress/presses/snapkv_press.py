@@ -52,9 +52,13 @@ class SnapKVPress(ScorerPress):
         # Get last window_size queries
         query_states = get_prerope_query_states(module, hidden_states[:, -window_size:])
 
-        # Apply RoPE
+        # Apply RoPE (handle partial rotary for GPTNeoX)
         cos, sin = position_embeddings
         cos, sin = cos[:, -window_size:], sin[:, -window_size:]
+        rotary_ndims = getattr(module, "rotary_ndims", head_dim)
+        if rotary_ndims < head_dim:
+            cos = torch.nn.functional.pad(cos, (0, head_dim - rotary_ndims), value=1.0)
+            sin = torch.nn.functional.pad(sin, (0, head_dim - rotary_ndims), value=0.0)
         query_states = (query_states * cos.unsqueeze(1)) + (rotate_half(query_states) * sin.unsqueeze(1))
 
         # Compute attention for first q_len - window_size tokens

@@ -11,6 +11,7 @@ import torch
 from torch import nn
 from transformers import (
     Gemma3ForConditionalGeneration,
+    GPTNeoXForCausalLM,
     LlamaForCausalLM,
     MistralForCausalLM,
     Phi3ForCausalLM,
@@ -31,6 +32,7 @@ SUPPORTED_MODELS = (
     Qwen2ForCausalLM,
     Qwen3ForCausalLM,
     Gemma3ForConditionalGeneration,
+    GPTNeoXForCausalLM,
 )
 
 
@@ -130,8 +132,8 @@ class BasePress:
             is the same as the input output, but the underlying cache has been compressed in-place.
         """
 
-        hidden_states = kwargs["hidden_states"]
-        cache = kwargs["past_key_values"]
+        hidden_states = kwargs.get("hidden_states", input[0] if input else None)
+        cache = kwargs.get("past_key_values", kwargs.get("layer_past"))
         cache_layer = cache.layers[module.layer_idx]
         q_len = hidden_states.shape[1]
 
@@ -188,13 +190,28 @@ class BasePress:
         self.post_init_from_model(model)
         hooks = []
         try:
-            language_model = model.model.language_model if hasattr(model.model, "language_model") else model.model
+            # Get the backbone language model (different attribute names per architecture)
+            if isinstance(model, GPTNeoXForCausalLM):
+                language_model = model.gpt_neox
+                # GPTNeoX uses MHA; alias num_key_value_heads for compatibility
+                if not hasattr(model.config, "num_key_value_heads"):
+                    model.config.num_key_value_heads = model.config.num_attention_heads
+            elif hasattr(model.model, "language_model"):
+                language_model = model.model.language_model
+            else:
+                language_model = model.model
+
             for layer in language_model.layers:
-                if isinstance(model, Gemma3ForConditionalGeneration) and layer.self_attn.is_sliding:
+                # Get the attention module (different attribute names per architecture)
+                attn = layer.attention if isinstance(model, GPTNeoXForCausalLM) else layer.self_attn
+                if isinstance(model, Gemma3ForConditionalGeneration) and attn.is_sliding:
                     # Skip layers with sliding window attention, only for Gemma3
                     continue
-                layer.self_attn.rotary_emb = language_model.rotary_emb
-                hooks.append(layer.self_attn.register_forward_hook(self.forward_hook, with_kwargs=True))
+                # GPTNeoX uses head_size instead of head_dim; alias it for compatibility
+                if isinstance(model, GPTNeoXForCausalLM) and not hasattr(attn, "head_dim"):
+                    attn.head_dim = attn.head_size
+                attn.rotary_emb = language_model.rotary_emb
+                hooks.append(attn.register_forward_hook(self.forward_hook, with_kwargs=True))
             yield
         finally:
             for forward_hook in hooks:

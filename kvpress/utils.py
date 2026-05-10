@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from transformers import Cache, QuantizedCache
 from transformers.models.gemma3.modeling_gemma3 import Gemma3Attention
+from transformers.models.gpt_neox.modeling_gpt_neox import GPTNeoXAttention
 from transformers.models.phi3.modeling_phi3 import Phi3Attention
 from transformers.models.qwen3.modeling_qwen3 import Qwen3Attention
 
@@ -33,10 +34,13 @@ def get_prerope_query_states(module: nn.Module, hidden_states: torch.Tensor) -> 
     """
     bsz, q_len, _ = hidden_states.shape
     num_heads = module.config.num_attention_heads
-    head_dim = module.head_dim
+    head_dim = getattr(module, "head_dim", getattr(module, "head_size", None))
 
     if isinstance(module, Phi3Attention):
         qkv = module.qkv_proj(hidden_states)
+        query_states = qkv[..., : num_heads * head_dim]
+    elif isinstance(module, GPTNeoXAttention):
+        qkv = module.query_key_value(hidden_states)
         query_states = qkv[..., : num_heads * head_dim]
     elif hasattr(module, "q_proj"):
         # Assume Llama-like attention layer
@@ -76,11 +80,16 @@ def get_prerope_key_states(module: nn.Module, hidden_states: torch.Tensor) -> to
         The extracted key states of shape (batch_size, num_heads, seq_len, head_dim).
     """
     bsz, k_len, _ = hidden_states.shape
-    head_dim = module.head_dim
+    head_dim = getattr(module, "head_dim", getattr(module, "head_size", None))
     if isinstance(module, Phi3Attention):
         qkv = module.qkv_proj(hidden_states)
         query_pos = module.config.num_attention_heads * module.head_dim
         key_states = qkv[..., query_pos : query_pos + module.num_key_value_heads * module.head_dim]
+    elif isinstance(module, GPTNeoXAttention):
+        qkv = module.query_key_value(hidden_states)
+        query_pos = module.config.num_attention_heads * module.head_size
+        num_kv_heads = getattr(module.config, "num_key_value_heads", module.config.num_attention_heads)
+        key_states = qkv[..., query_pos : query_pos + num_kv_heads * module.head_size]
     elif hasattr(module, "k_proj"):
         # Assume Llama-like attention layer
         key_states = module.k_proj(hidden_states)
