@@ -46,7 +46,9 @@ class StreamingLLMPress(ScorerPress):
     ) -> torch.Tensor:
 
         k_len = keys.shape[2]
-        assert k_len > self.n_sink, f"Input should contain more tokens than n_sink={self.n_sink}"
+        if k_len <= self.n_sink:
+            # Too short to compress, keep all tokens
+            return torch.ones_like(keys[..., 0])
         n_pruned = k_len - int(k_len * (1 - self.compression_ratio))
         scores = torch.ones_like(keys[..., 0])
         scores[:, :, self.n_sink : self.n_sink + n_pruned] = 0

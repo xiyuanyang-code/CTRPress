@@ -85,9 +85,9 @@ class SnapKVPress(ScorerPress):
         bsz, num_key_value_heads, k_len, _ = keys.shape
         num_key_value_groups = module.config.num_attention_heads // num_key_value_heads
 
-        assert (
-            hidden_states.shape[1] > self.window_size
-        ), f"Query length {hidden_states.shape[1]} should be greater than the window size {self.window_size}"
+        if hidden_states.shape[1] <= self.window_size:
+            # Too short to compute window attention, keep all tokens
+            return torch.ones((bsz, num_key_value_heads, k_len), dtype=keys.dtype, device=keys.device)
 
         if attentions is not None:
             attn_weights = attentions[..., -self.window_size :, : -self.window_size]
