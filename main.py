@@ -151,8 +151,11 @@ def load_dataset(dataset_name: str, split: str = "test", max_samples: Optional[i
         df = pd.concat(dfs, ignore_index=True)
         texts = df["text"].tolist()
 
-        # 过滤空文本
-        texts = [t for t in texts if t.strip()]
+        # 过滤空文本和太短的文本（至少 500 字符）
+        texts = [t for t in texts if len(t.strip()) >= 500]
+
+        # 按长度降序排列，优先使用较长的文本
+        texts.sort(key=len, reverse=True)
 
         # 构造数据
         data = [{"text": text, "question": None} for text in texts]
@@ -322,12 +325,15 @@ def save_results(results: Dict, output_dir: str, run_dir_name: str):
 
     for key in metric_keys:
         values = [m[key] for m in all_metrics]
-        summary["summary"][key] = {
-            "mean": np.mean(values),
-            "std": np.std(values),
-            "min": np.min(values),
-            "max": np.max(values),
-        }
+        if not values:
+            summary["summary"][key] = {"mean": None, "std": None, "min": None, "max": None}
+        else:
+            summary["summary"][key] = {
+                "mean": float(np.mean(values)),
+                "std": float(np.std(values)),
+                "min": float(np.min(values)),
+                "max": float(np.max(values)),
+            }
 
     summary_file = os.path.join(run_dir, "summary.json")
     with open(summary_file, "w") as f:
@@ -395,6 +401,12 @@ def main():
         text = sample["text"]
         question = sample.get("question")
         metadata = sample.get("metadata", {})
+
+        # 跳过太短的样本（避免 StreamingLLM 等方法 assert 失败）
+        n_tokens = len(evaluator.tokenizer(text)["input_ids"])
+        if n_tokens < 16:
+            print(f"    Skipping sample (only {n_tokens} tokens)")
+            continue
 
         # 评估单个样本
         metrics = evaluate_single_sample(

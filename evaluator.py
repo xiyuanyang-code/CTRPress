@@ -104,14 +104,18 @@ class KVCacheEvaluator:
                 "attention_mask": inputs["attention_mask"][:, start:end]
             }
 
-            with torch.no_grad():
-                if press:
-                    with press(self.model):
+            try:
+                with torch.no_grad():
+                    if press:
+                        with press(self.model):
+                            outputs = self.model(**segment_inputs, labels=segment_inputs["input_ids"])
+                    else:
                         outputs = self.model(**segment_inputs, labels=segment_inputs["input_ids"])
-                else:
-                    outputs = self.model(**segment_inputs, labels=segment_inputs["input_ids"])
 
-            ppl = torch.exp(outputs.loss).item()
+                ppl = torch.exp(outputs.loss).item()
+            except (AssertionError, RuntimeError):
+                ppl = float("nan")
+
             position_ppls.append(ppl)
 
         return tuple(position_ppls)
