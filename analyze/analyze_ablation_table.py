@@ -195,7 +195,7 @@ def plot_metric(dataset: str, metric: str, method_data: dict, output_dir: str):
     fig.tight_layout()
 
     os.makedirs(output_dir, exist_ok=True)
-    filename = f"{dataset}_{metric}.pdf"
+    filename = f"{dataset}_{metric}.png"
     filepath = os.path.join(output_dir, filename)
     fig.savefig(filepath, dpi=200, bbox_inches="tight")
     plt.close(fig)

@@ -35,15 +35,13 @@ This project extends the kvpress framework with an **end-to-end evaluation pipel
 
 > For the full list of kvpress-supported methods, see [README4kv_press.md](README4kv_press.md).
 
----
+## Baseline Reproduction
 
-## Part 1: Environment Setup
-
-### Requirements
+### Environment Setup
 
 - **CUDA**: 12.9
 - **Python**: 3.11.14
-- **GPU**: NVIDIA GPU (A100 / H100 or other large-memory GPUs recommended)
+- **GPU**: NVIDIA GPUs
 
 ### Installation
 
@@ -62,23 +60,17 @@ uv sync --extra eval --extra flash-attn
 source .venv/bin/activate
 ```
 
-### Model & Data Preparation
-
+Models and datasets are required: 
 - **Models**: Place model files under the `models/` directory
-  - `models/pythia/` — Pythia model
-  - `models/qwen_3_1.7b/` — Qwen3-1.7B model
+  - `models/pythia/` — Pythia model (https://huggingface.co/EleutherAI/pythia-70m)
+  - `models/qwen_3_1.7b/` — Qwen3-1.7B model (https://huggingface.co/Qwen/Qwen3-1.7B)
 - **Datasets**: Place dataset files under the `data/` directory
-  - `data/pg19/` — PG-19 long-text dataset
-  - `data/wikitext/` — WikiText-103 dataset
-  - `data/NoLiMa/` — NoLiMa long-context QA dataset
+  - `data/pg19/` — PG-19 long-text dataset (https://huggingface.co/datasets/emozilla/pg19)
+  - `data/wikitext/` — WikiText-103 dataset (https://huggingface.co/datasets/Salesforce/wikitext)
+  - `data/NoLiMa/` — NoLiMa long-context QA dataset (https://huggingface.co/datasets/amodaresi/NoLiMa)
 
----
 
-## Part 2: Running Baseline Experiments
-
-### Option 1: Batch Scripts (Recommended)
-
-**Main table experiments** — 3 compression ratios x 3 datasets = 9 runs:
+**Main table experiments**
 
 ```bash
 # Usage: bash run_maintable.sh <MODEL> <PRESS_METHOD>
@@ -87,7 +79,7 @@ bash run_maintable.sh pythia snapkv
 bash run_maintable.sh qwen_3_1.7b lagkv
 ```
 
-**Ablation experiments** — Compression ratio sweep (100 points, 0.01 to 0.99):
+**Ablation experiments**
 
 ```bash
 # Usage: bash ablation_compression_rate.sh <PRESS_METHOD>
@@ -97,7 +89,7 @@ bash ablation_compression_rate.sh snapkv
 bash ablation_compression_rate.sh keydiff
 ```
 
-### Option 2: Manual Execution
+Manual Execution directly using `main.py` is also available:
 
 ```bash
 python main.py \
@@ -124,49 +116,80 @@ python main.py \
 | `--max_samples` | integer | Maximum number of samples |
 | `--output_dir` | path | Output directory for results |
 
----
 
-## Part 3: Result Analysis
+### Result Analysis
 
 Experiment results are saved under `results/` (main table) and `results_ablation/` (ablation study), with each run generating a separate subdirectory containing:
 
 - `results.json` — Detailed per-sample, per-repeat measurement results
 - `summary.json` — Aggregated statistics (mean/std/min/max) for each metric
 
-### Generate Summary Tables (CSV)
-
 ```bash
+# Generate Summary Tables (CSV)
 cd analyze
 python analyze_main_table.py
 ```
 
 Outputs CSV files under `analyze/tables/`, one per `(dataset, compression_ratio)` combination.
 
-### Generate LaTeX Tables
-
 ```bash
-cd analyze
-python generate_tables.py
-```
-
-Outputs `main_table.tex`, ready to be embedded in a paper.
-
-### Generate Ablation Plots
-
-```bash
+# Generate Ablation Plots
 cd analyze
 python analyze_ablation_table.py
 ```
 
 Outputs PDF plots under `analyze/images/`, showing metric trends across different compression ratios for each method.
 
----
+### Main Table Analysis
 
-## Part 4: Our Novel KVPress Algorithm
+We evaluate 5 compression methods + no-compression baseline on the Pythia model across three datasets (NoLiMa, WikiText-103, PG-19) at compression ratios of 30%, 50%, and 70%.
+
+**Key observations:**
+
+- **WikiText-103** (short-context, ~80 PPL baseline): Methods behave similarly at low compression. At 30% ratio, `lagkv` (75.78) slightly outperforms the uncompressed baseline, suggesting denoising effects. As compression increases to 70%, all methods degrade gracefully with PPLs staying within 90-94.
+- **NoLiMa** (long-context QA, ~3459 PPL baseline): `streaming_llm` is the most stable method across all ratios, maintaining competitive PPL. `lagkv` suffers severe degradation at higher ratios (PPL explodes to 90K at 70%), indicating its lag-relative scoring discards critical information in long-range dependency tasks.
+- **PG-19** (long book texts, ~18K PPL baseline): `lagkv` catastrophically fails at high compression (PPL reaches 4.6M at 70%), while `snapkv` and `streaming_llm` remain relatively robust. `keydiff` shows moderate degradation.
+- **Inference efficiency**: All compression methods reduce KV cache size and improve throughput compared to the baseline. `streaming_llm` and `lagkv` achieve the lowest per-token latency due to their simpler scoring mechanisms.
+- **Front PPL is preserved**: Across all settings, `front_ppl` (first 1/3 of text) remains close to the baseline, as compression is applied after prefilling the initial context.
+
+<table>
+<tr>
+<td><img src="./analyze/images/nolima_table.png" width="330"/></td>
+<td><img src="./analyze/images/wikitext_table.png" width="330"/></td>
+<td><img src="./analyze/images/pg19_table.png" width="330"/></td>
+</tr>
+</table>
+
+### Ablation Study: Compression Rate vs. Efficiency
+
+We sweep compression ratios from 0.01 to 0.99 (100 points) on the PG-19 dataset with the Pythia model to analyze how each method's performance and efficiency scale with the degree of compression.
+
+**Key observations:**
+
+- **Prefilling Time**: `snapkv` has higher prefilling overhead at low compression due to its attention-score computation. Other methods maintain near-constant prefilling time regardless of compression ratio.
+- **TTFT (Time to First Token)**: Follows a similar trend to prefilling time. Higher compression generally reduces TTFT as fewer KV pairs need to be processed.
+- **Time per Token & Generation Time**: Decrease monotonically with higher compression, as a smaller KV cache speeds up autoregressive decoding. `streaming_llm` and `lagkv` achieve the lowest per-token latency.
+- **Throughput**: Increases with compression ratio. The relationship is roughly linear for most methods, with `lagkv` and `streaming_llm` achieving the highest throughput at aggressive compression.
+- **KV Cache Size**: Decreases linearly with the compression ratio for all methods, confirming the expected memory savings.
+
+<table>
+<tr>
+<td><img src="./analyze/images/pg19_prefilling_time.png" width="330"/></td>
+<td><img src="./analyze/images/pg19_ttft.png" width="330"/></td>
+<td><img src="./analyze/images/pg19_time_per_token.png" width="330"/></td>
+</tr>
+<tr>
+<td><img src="./analyze/images/pg19_generation_time.png" width="330"/></td>
+<td><img src="./analyze/images/pg19_throughput.png" width="330"/></td>
+<td><img src="./analyze/images/pg19_kv_cache_size.png" width="330"/></td>
+</tr>
+</table>
+
+
+## Our Novel KVPress Algorithm
 
 > TODO: Add description of the custom compression method here
 
----
 
 ## Project Structure
 
@@ -211,7 +234,6 @@ EfficientNLP/
 └── README4kv_press.md               # Original kvpress README
 ```
 
----
 
 ## Acknowledgements
 
