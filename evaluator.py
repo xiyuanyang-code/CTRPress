@@ -55,9 +55,20 @@ class KVCacheEvaluator:
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+    def _get_language_model(self):
+        """获取 backbone language model，适配不同架构"""
+        from transformers import GPTNeoXForCausalLM
+        if isinstance(self.model, GPTNeoXForCausalLM):
+            return self.model.gpt_neox
+        return self.model.model
+
     def calculate_ppl(self, text: str, press=None) -> float:
         """
         计算困惑度
+
+        正确的实现方式：
+        1. 用前一半文本做 prefill（带压缩），构建 KV cache
+        2. 用压缩后的 KV cache 计算后一半文本的 PPL
 
         Args:
             text: 输入文本
@@ -67,21 +78,46 @@ class KVCacheEvaluator:
             PPL 值
         """
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
+        input_ids = inputs["input_ids"]
+        seq_len = input_ids.shape[1]
+
+        # 分割：前半部分作为 context，后半部分用于计算 PPL
+        split = seq_len // 2
+        context_ids = input_ids[:, :split]
+        eval_ids = input_ids[:, split:]
 
         with torch.no_grad():
+            cache = DynamicCache()
+
+            # Step 1: Prefill context（带或不带压缩）
+            lm = self._get_language_model()
             if press:
                 with press(self.model):
-                    outputs = self.model(**inputs, labels=inputs["input_ids"])
+                    lm(input_ids=context_ids, past_key_values=cache)
             else:
-                outputs = self.model(**inputs, labels=inputs["input_ids"])
+                lm(input_ids=context_ids, past_key_values=cache)
 
-        loss = outputs.loss
+            # Step 2: 用 cache 计算评估部分的 PPL
+            position_ids = torch.arange(split, seq_len, device=self.device).unsqueeze(0)
+            outputs = self.model(
+                input_ids=eval_ids,
+                past_key_values=cache,
+                position_ids=position_ids,
+                labels=eval_ids,
+            )
+            loss = outputs.loss
+
         ppl = torch.exp(loss).item()
         return ppl
 
     def calculate_position_ppl(self, text: str, press=None) -> Tuple[float, float, float]:
         """
         计算按位置的困惑度（前、中、后）
+
+        对每个 1/3 段：
+        - Front: 无 context，直接计算前 1/3 的 PPL
+        - Middle: 先 prefill 前 1/3，再计算中间 1/3 的 PPL
+        - Back: 先 prefill 前 2/3，再计算最后 1/3 的 PPL
 
         Args:
             text: 输入文本
@@ -91,7 +127,8 @@ class KVCacheEvaluator:
             (front_ppl, middle_ppl, back_ppl)
         """
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        seq_len = inputs["input_ids"].shape[1]
+        input_ids = inputs["input_ids"]
+        seq_len = input_ids.shape[1]
         segment_len = seq_len // 3
 
         position_ppls = []
@@ -99,22 +136,33 @@ class KVCacheEvaluator:
             start = i * segment_len
             end = (i + 1) * segment_len if i < 2 else seq_len
 
-            segment_inputs = {
-                "input_ids": inputs["input_ids"][:, start:end],
-                "attention_mask": inputs["attention_mask"][:, start:end]
-            }
+            context_ids = input_ids[:, :start]
+            eval_ids = input_ids[:, start:end]
 
-            try:
-                with torch.no_grad():
+            with torch.no_grad():
+                cache = DynamicCache()
+
+                # Prefill context（如果有）
+                if start > 0:
+                    lm = self._get_language_model()
                     if press:
                         with press(self.model):
-                            outputs = self.model(**segment_inputs, labels=segment_inputs["input_ids"])
+                            lm(input_ids=context_ids, past_key_values=cache)
                     else:
-                        outputs = self.model(**segment_inputs, labels=segment_inputs["input_ids"])
+                        lm(input_ids=context_ids, past_key_values=cache)
 
-                ppl = torch.exp(outputs.loss).item()
-            except (AssertionError, RuntimeError):
-                ppl = float("nan")
+                # 计算该段的 PPL
+                position_ids = torch.arange(start, end, device=self.device).unsqueeze(0)
+                try:
+                    outputs = self.model(
+                        input_ids=eval_ids,
+                        past_key_values=cache,
+                        position_ids=position_ids,
+                        labels=eval_ids,
+                    )
+                    ppl = torch.exp(outputs.loss).item()
+                except (AssertionError, RuntimeError):
+                    ppl = float("nan")
 
             position_ppls.append(ppl)
 
