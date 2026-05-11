@@ -155,8 +155,8 @@ We evaluate 5 compression methods + no-compression baseline on the Pythia model 
 <table>
 <tr>
 <td><img src="./analyze/images/nolima_table.png" width="330"/></td>
-<td><img src="./analyze/images/wikitext_table.png" width="330"/></td>
-<td><img src="./analyze/images/pg19_table.png" width="330"/></td>
+<td><img src="./analyze/images/wikitext_table.png" width="280"/></td>
+<td><img src="./analyze/images/pg19_table.png" width="360"/></td>
 </tr>
 </table>
 
