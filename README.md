@@ -2,6 +2,22 @@
 
 A secondary development built on top of [kvpress](https://github.com/NVIDIA/kvpress) (NVIDIA), focusing on systematic evaluation and analysis of KV cache compression methods.
 
+## Outline
+
+- [Introduction](#introduction)
+  - [Evaluation Metrics](#evaluation-metrics)
+  - [Supported Compression Methods](#supported-compression-methods)
+- [Baseline Reproduction](#baseline-reproduction)
+  - [Environment Setup](#environment-setup)
+  - [Installation](#installation)
+  - [Result Analysis](#result-analysis)
+  - [Main Table Analysis](#main-table-analysis)
+  - [Ablation Study: Compression Rate vs. Efficiency](#ablation-study-compression-rate-vs-efficiency)
+- [Our Novel KVPress Algorithm](#our-novel-kvpress-algorithm)
+- [Project Structure](#project-structure)
+- [Acknowledgements](#acknowledgements)
+- [License](#license)
+
 ## Introduction
 
 KV cache is one of the core bottlenecks during Transformer inference — the linearly growing key-value cache consumes enormous memory. For example, handling 1M tokens with Llama 3.1-70B in float16 requires up to 330GB of memory for KV cache alone.
