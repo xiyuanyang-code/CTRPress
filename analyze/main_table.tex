@@ -1,0 +1,190 @@
+% Main Table Results
+
+% ============================================================
+% Table: Nolima Dataset
+% ============================================================
+
+\begin{table*}[t]
+    \centering
+    \footnotesize
+    \caption{Main results on Nolima dataset with Pythia model. Best scores are in \textbf{bold}.}
+    \vspace{-0.2cm}
+    \label{tab:nolima}
+    \setlength{\tabcolsep}{2.5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l|cccccccccc}
+    \toprule
+    \textbf{Method} & \textbf{PPL} & \textbf{Front} & \textbf{Mid} & \textbf{Back} & \textbf{PreT} & \textbf{TTFT} & \textbf{T/Tok} & \textbf{GenT} & \textbf{TP} & \textbf{Mem} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{yellow!12}\textbf{No Compression}} \\
+    \rowcolor{gray!8}
+    no\_compress & 3,459.26 & 1,988.35 & 3,177.96 & 3,475.46 & 0.569 & 0.586 & 34.441 & 0.738 & 28.70 & 10.51 \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 30\%}} \\
+    random & \textbf{3,511.40} & 1,988.35 & 3,248.59 & 3,574.45 & 0.445 & 0.425 & 7.545 & 2.088 & 92.74 & 10.18 \\
+     & {\tiny\color{red!70!black}(+1.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+2.2\%)} & {\tiny\color{red!70!black}(+2.8\%)} & {\tiny\color{green!60!black}(-21.8\%)} & {\tiny\color{green!60!black}(-27.5\%)} & {\tiny\color{green!60!black}(-78.1\%)} & {\tiny\color{red!70!black}(+183.1\%)} & {\tiny\color{green!60!black}(+223.2\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    streaming\_llm & 3,684.42 & 1,988.35 & 3,768.78 & 3,350.72 & 0.438 & 0.421 & 7.828 & 7.778 & 128.58 & 10.18 \\
+     & {\tiny\color{red!70!black}(+6.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+18.6\%)} & {\tiny\color{green!60!black}(-3.6\%)} & {\tiny\color{green!60!black}(-23.1\%)} & {\tiny\color{green!60!black}(-28.2\%)} & {\tiny\color{green!60!black}(-77.3\%)} & {\tiny\color{red!70!black}(+954.6\%)} & {\tiny\color{green!60!black}(+348.1\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    snapkv & 3,555.30 & 1,988.35 & 3,126.89 & 3,203.07 & 0.740 & 0.766 & 25.570 & 1.022 & 39.56 & 10.18 \\
+     & {\tiny\color{red!70!black}(+2.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-1.6\%)} & {\tiny\color{green!60!black}(-7.8\%)} & {\tiny\color{red!70!black}(+30.1\%)} & {\tiny\color{red!70!black}(+30.7\%)} & {\tiny\color{green!60!black}(-25.8\%)} & {\tiny\color{red!70!black}(+38.6\%)} & {\tiny\color{green!60!black}(+37.9\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    lagkv & 6,670.18 & 1,988.35 & 6,263.12 & 8,239.71 & 0.455 & 0.458 & 38.008 & 0.568 & 26.63 & 10.18 \\
+     & {\tiny\color{red!70!black}(+92.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+97.1\%)} & {\tiny\color{red!70!black}(+137.1\%)} & {\tiny\color{green!60!black}(-20.1\%)} & {\tiny\color{green!60!black}(-21.8\%)} & {\tiny\color{red!70!black}(+10.4\%)} & {\tiny\color{green!60!black}(-23.0\%)} & {\tiny\color{red!70!black}(-7.2\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    keydiff & 3,835.54 & 1,988.35 & 3,637.77 & 3,861.46 & 0.452 & 0.448 & 20.799 & 0.640 & 50.02 & 10.18 \\
+     & {\tiny\color{red!70!black}(+10.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+14.5\%)} & {\tiny\color{red!70!black}(+11.1\%)} & {\tiny\color{green!60!black}(-20.6\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-39.6\%)} & {\tiny\color{green!60!black}(-13.2\%)} & {\tiny\color{green!60!black}(+74.3\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 50\%}} \\
+    random & 3,716.06 & 1,988.35 & 3,290.82 & 3,678.13 & 0.431 & 0.436 & 11.746 & 7.124 & 140.37 & 9.95 \\
+     & {\tiny\color{red!70!black}(+7.4\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+3.6\%)} & {\tiny\color{red!70!black}(+5.8\%)} & {\tiny\color{green!60!black}(-24.2\%)} & {\tiny\color{green!60!black}(-25.6\%)} & {\tiny\color{green!60!black}(-65.9\%)} & {\tiny\color{red!70!black}(+866.0\%)} & {\tiny\color{green!60!black}(+389.2\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    streaming\_llm & \textbf{3,272.84} & 1,988.35 & 3,421.57 & 3,300.48 & 0.411 & 0.430 & 7.784 & 2.855 & 128.98 & 9.95 \\
+     & {\tiny\color{green!60!black}(-5.4\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+7.7\%)} & {\tiny\color{green!60!black}(-5.0\%)} & {\tiny\color{green!60!black}(-27.8\%)} & {\tiny\color{green!60!black}(-26.6\%)} & {\tiny\color{green!60!black}(-77.4\%)} & {\tiny\color{red!70!black}(+287.1\%)} & {\tiny\color{green!60!black}(+349.5\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    snapkv & 3,658.20 & 1,988.35 & 3,246.12 & 3,228.73 & 0.566 & 0.510 & 9.967 & 15.370 & 65.69 & 9.95 \\
+     & {\tiny\color{red!70!black}(+5.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+2.1\%)} & {\tiny\color{green!60!black}(-7.1\%)} & {\tiny\color{green!60!black}(-0.5\%)} & {\tiny\color{green!60!black}(-13.0\%)} & {\tiny\color{green!60!black}(-71.1\%)} & {\tiny\color{red!70!black}(+1984.1\%)} & {\tiny\color{green!60!black}(+128.9\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    lagkv & 17,821.78 & 1,988.35 & 16,903.15 & 31,223.69 & 0.474 & 0.459 & 7.042 & 7.083 & 141.29 & 9.95 \\
+     & {\tiny\color{red!70!black}(+415.2\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+431.9\%)} & {\tiny\color{red!70!black}(+798.4\%)} & {\tiny\color{green!60!black}(-16.8\%)} & {\tiny\color{green!60!black}(-21.6\%)} & {\tiny\color{green!60!black}(-79.6\%)} & {\tiny\color{red!70!black}(+860.4\%)} & {\tiny\color{green!60!black}(+392.4\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    keydiff & 4,688.48 & 1,988.35 & 4,236.92 & 4,680.22 & 0.430 & 0.438 & 19.397 & 0.609 & 52.55 & 9.95 \\
+     & {\tiny\color{red!70!black}(+35.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+33.3\%)} & {\tiny\color{red!70!black}(+34.7\%)} & {\tiny\color{green!60!black}(-24.4\%)} & {\tiny\color{green!60!black}(-25.2\%)} & {\tiny\color{green!60!black}(-43.7\%)} & {\tiny\color{green!60!black}(-17.4\%)} & {\tiny\color{green!60!black}(+83.1\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 70\%}} \\
+    random & 3,867.10 & 1,988.35 & 3,374.06 & 3,776.67 & 0.459 & 0.452 & 11.713 & 4.005 & 141.03 & 9.73 \\
+     & {\tiny\color{red!70!black}(+11.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+6.2\%)} & {\tiny\color{red!70!black}(+8.7\%)} & {\tiny\color{green!60!black}(-19.3\%)} & {\tiny\color{green!60!black}(-22.9\%)} & {\tiny\color{green!60!black}(-66.0\%)} & {\tiny\color{red!70!black}(+443.1\%)} & {\tiny\color{green!60!black}(+391.5\%)} & {\tiny\color{green!60!black}(-7.5\%)} \\
+    streaming\_llm & \textbf{3,158.64} & 1,988.35 & 3,071.49 & 3,538.74 & 0.411 & 0.414 & 6.328 & 6.295 & 158.85 & 9.73 \\
+     & {\tiny\color{green!60!black}(-8.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-3.4\%)} & {\tiny\color{red!70!black}(+1.8\%)} & {\tiny\color{green!60!black}(-27.7\%)} & {\tiny\color{green!60!black}(-29.3\%)} & {\tiny\color{green!60!black}(-81.6\%)} & {\tiny\color{red!70!black}(+753.6\%)} & {\tiny\color{green!60!black}(+453.6\%)} & {\tiny\color{green!60!black}(-7.5\%)} \\
+    snapkv & 4,043.87 & 1,988.35 & 3,323.67 & 3,387.92 & 0.591 & 0.681 & 316.779 & 0.636 & 3.48 & 9.73 \\
+     & {\tiny\color{red!70!black}(+16.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+4.6\%)} & {\tiny\color{green!60!black}(-2.5\%)} & {\tiny\color{red!70!black}(+3.8\%)} & {\tiny\color{red!70!black}(+16.2\%)} & {\tiny\color{red!70!black}(+819.8\%)} & {\tiny\color{green!60!black}(-13.8\%)} & {\tiny\color{red!70!black}(-87.9\%)} & {\tiny\color{green!60!black}(-7.5\%)} \\
+    lagkv & 89,998.73 & 1,988.35 & 89,975.12 & 306,075.47 & 0.436 & 0.478 & 6.241 & 6.313 & 158.41 & 9.73 \\
+     & {\tiny\color{red!70!black}(+2501.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+2731.2\%)} & {\tiny\color{red!70!black}(+8706.8\%)} & {\tiny\color{green!60!black}(-23.3\%)} & {\tiny\color{green!60!black}(-18.5\%)} & {\tiny\color{green!60!black}(-81.9\%)} & {\tiny\color{red!70!black}(+756.0\%)} & {\tiny\color{green!60!black}(+452.0\%)} & {\tiny\color{green!60!black}(-7.5\%)} \\
+    keydiff & 6,842.58 & 1,988.35 & 5,706.31 & 9,301.38 & 0.432 & 0.438 & 9.470 & 1.098 & 108.43 & 9.73 \\
+     & {\tiny\color{red!70!black}(+97.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+79.6\%)} & {\tiny\color{red!70!black}(+167.6\%)} & {\tiny\color{green!60!black}(-24.2\%)} & {\tiny\color{green!60!black}(-25.3\%)} & {\tiny\color{green!60!black}(-72.5\%)} & {\tiny\color{red!70!black}(+48.9\%)} & {\tiny\color{green!60!black}(+277.9\%)} & {\tiny\color{green!60!black}(-7.5\%)} \\
+    \bottomrule
+    \end{tabular}%
+    }
+    \vspace{0.1cm}
+    \footnotesize{PreT: Prefilling Time (s), TTFT: Time to First Token (s), T/Tok: Time per Token (ms), GenT: Generation Time (s), TP: Throughput (tokens/s), Mem: Peak Memory (GB)}
+\end{table*}
+
+% ============================================================
+% Table: Pg19 Dataset
+% ============================================================
+
+\begin{table*}[t]
+    \centering
+    \footnotesize
+    \caption{Main results on Pg19 dataset with Pythia model. Best scores are in \textbf{bold}.}
+    \vspace{-0.2cm}
+    \label{tab:pg19}
+    \setlength{\tabcolsep}{2.5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l|cccccccccc}
+    \toprule
+    \textbf{Method} & \textbf{PPL} & \textbf{Front} & \textbf{Mid} & \textbf{Back} & \textbf{PreT} & \textbf{TTFT} & \textbf{T/Tok} & \textbf{GenT} & \textbf{TP} & \textbf{Mem} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{yellow!12}\textbf{No Compression}} \\
+    \rowcolor{gray!8}
+    no\_compress & 17,996.89 & 4,287.42 & 20,640.14 & 19,088.84 & 0.245 & 0.250 & 12.777 & 0.541 & 75.16 & 6.42 \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 30\%}} \\
+    random & \textbf{18,588.66} & 4,287.42 & 21,031.16 & 19,018.22 & 0.210 & 0.212 & 23.022 & 0.273 & 51.02 & 6.22 \\
+     & {\tiny\color{red!70!black}(+3.3\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+1.9\%)} & {\tiny\color{green!60!black}(-0.4\%)} & {\tiny\color{green!60!black}(-14.4\%)} & {\tiny\color{green!60!black}(-15.0\%)} & {\tiny\color{red!70!black}(+80.2\%)} & {\tiny\color{green!60!black}(-49.6\%)} & {\tiny\color{red!70!black}(-32.1\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    streaming\_llm & 31,115.96 & 4,287.42 & 27,657.17 & 32,503.74 & 0.188 & 0.208 & 7.067 & 2.033 & 140.21 & 6.22 \\
+     & {\tiny\color{red!70!black}(+72.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+34.0\%)} & {\tiny\color{red!70!black}(+70.3\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-16.8\%)} & {\tiny\color{green!60!black}(-44.7\%)} & {\tiny\color{red!70!black}(+275.7\%)} & {\tiny\color{green!60!black}(+86.6\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    snapkv & 18,833.88 & 4,287.42 & 20,080.67 & 20,190.35 & 0.284 & 0.256 & 8.460 & 1.890 & 120.38 & 6.22 \\
+     & {\tiny\color{red!70!black}(+4.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-2.7\%)} & {\tiny\color{red!70!black}(+5.8\%)} & {\tiny\color{red!70!black}(+15.7\%)} & {\tiny\color{red!70!black}(+2.4\%)} & {\tiny\color{green!60!black}(-33.8\%)} & {\tiny\color{red!70!black}(+249.2\%)} & {\tiny\color{green!60!black}(+60.2\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    lagkv & 103,490.24 & 4,287.42 & 150,513.39 & 203,010.14 & 0.220 & 0.213 & 7.112 & 1.690 & 139.90 & 6.22 \\
+     & {\tiny\color{red!70!black}(+475.0\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+629.2\%)} & {\tiny\color{red!70!black}(+963.5\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{green!60!black}(-14.9\%)} & {\tiny\color{green!60!black}(-44.3\%)} & {\tiny\color{red!70!black}(+212.2\%)} & {\tiny\color{green!60!black}(+86.1\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    keydiff & 23,418.80 & 4,287.42 & 26,323.44 & 25,543.06 & 0.209 & 0.207 & 10.203 & 0.449 & 100.24 & 6.22 \\
+     & {\tiny\color{red!70!black}(+30.1\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+27.5\%)} & {\tiny\color{red!70!black}(+33.8\%)} & {\tiny\color{green!60!black}(-15.0\%)} & {\tiny\color{green!60!black}(-17.2\%)} & {\tiny\color{green!60!black}(-20.1\%)} & {\tiny\color{green!60!black}(-17.0\%)} & {\tiny\color{green!60!black}(+33.4\%)} & {\tiny\color{green!60!black}(-3.2\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 50\%}} \\
+    random & 18,743.38 & 4,287.42 & 20,011.68 & 21,765.17 & 0.207 & 0.220 & 9.457 & 1.153 & 111.33 & 6.08 \\
+     & {\tiny\color{red!70!black}(+4.1\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-3.0\%)} & {\tiny\color{red!70!black}(+14.0\%)} & {\tiny\color{green!60!black}(-15.5\%)} & {\tiny\color{green!60!black}(-12.0\%)} & {\tiny\color{green!60!black}(-26.0\%)} & {\tiny\color{red!70!black}(+113.1\%)} & {\tiny\color{green!60!black}(+48.1\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    streaming\_llm & 25,656.36 & 4,287.42 & 18,501.40 & 33,641.49 & 0.188 & 0.211 & 7.098 & 1.115 & 141.76 & 6.08 \\
+     & {\tiny\color{red!70!black}(+42.6\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{red!70!black}(+76.2\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-15.4\%)} & {\tiny\color{green!60!black}(-44.4\%)} & {\tiny\color{red!70!black}(+106.0\%)} & {\tiny\color{green!60!black}(+88.6\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    snapkv & \textbf{17,111.21} & 4,287.42 & 16,252.02 & 19,847.29 & 0.242 & 0.263 & 8.459 & 1.857 & 122.26 & 6.08 \\
+     & {\tiny\color{green!60!black}(-4.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-21.3\%)} & {\tiny\color{red!70!black}(+4.0\%)} & {\tiny\color{green!60!black}(-1.2\%)} & {\tiny\color{red!70!black}(+5.3\%)} & {\tiny\color{green!60!black}(-33.8\%)} & {\tiny\color{red!70!black}(+243.3\%)} & {\tiny\color{green!60!black}(+62.7\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    lagkv & 685,944.44 & 4,287.42 & 1,367,527.88 & 3,114,390.00 & 0.202 & 0.209 & 6.168 & 6.106 & 163.79 & 6.08 \\
+     & {\tiny\color{red!70!black}(+3711.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+6525.6\%)} & {\tiny\color{red!70!black}(+16215.2\%)} & {\tiny\color{green!60!black}(-17.6\%)} & {\tiny\color{green!60!black}(-16.4\%)} & {\tiny\color{green!60!black}(-51.7\%)} & {\tiny\color{red!70!black}(+1028.3\%)} & {\tiny\color{green!60!black}(+117.9\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    keydiff & 44,889.14 & 4,287.42 & 38,468.80 & 43,302.41 & 0.217 & 0.224 & 9.771 & 0.489 & 104.29 & 6.08 \\
+     & {\tiny\color{red!70!black}(+149.4\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+86.4\%)} & {\tiny\color{red!70!black}(+126.8\%)} & {\tiny\color{green!60!black}(-11.6\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-9.6\%)} & {\tiny\color{green!60!black}(+38.8\%)} & {\tiny\color{green!60!black}(-5.3\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 70\%}} \\
+    random & 20,017.21 & 4,287.42 & 18,484.13 & 24,107.49 & 0.220 & 0.206 & 9.843 & 1.467 & 115.75 & 5.95 \\
+     & {\tiny\color{red!70!black}(+11.2\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{red!70!black}(+26.3\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{green!60!black}(-17.7\%)} & {\tiny\color{green!60!black}(-23.0\%)} & {\tiny\color{red!70!black}(+171.1\%)} & {\tiny\color{green!60!black}(+54.0\%)} & {\tiny\color{green!60!black}(-7.4\%)} \\
+    streaming\_llm & 20,980.63 & 4,287.42 & 12,743.69 & 26,437.78 & 0.188 & 0.202 & 40.549 & 0.197 & 25.39 & 5.95 \\
+     & {\tiny\color{red!70!black}(+16.6\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-38.3\%)} & {\tiny\color{red!70!black}(+38.5\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-19.1\%)} & {\tiny\color{red!70!black}(+217.4\%)} & {\tiny\color{green!60!black}(-63.6\%)} & {\tiny\color{red!70!black}(-66.2\%)} & {\tiny\color{green!60!black}(-7.4\%)} \\
+    snapkv & \textbf{18,872.05} & 4,287.42 & 13,122.68 & 21,418.18 & 0.236 & 0.250 & 36.044 & 0.270 & 29.58 & 5.95 \\
+     & {\tiny\color{red!70!black}(+4.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{green!60!black}(-36.4\%)} & {\tiny\color{red!70!black}(+12.2\%)} & {\tiny\color{green!60!black}(-3.7\%)} & {\tiny\color{green!60!black}(-0.0\%)} & {\tiny\color{red!70!black}(+182.1\%)} & {\tiny\color{green!60!black}(-50.0\%)} & {\tiny\color{red!70!black}(-60.6\%)} & {\tiny\color{green!60!black}(-7.4\%)} \\
+    lagkv & 4,615,935.00 & 4,287.42 & 12,211,378.00 & 40,059,808.00 & 0.214 & 0.214 & 5.589 & 5.598 & 178.64 & 5.95 \\
+     & {\tiny\color{red!70!black}(+25548.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+59063.3\%)} & {\tiny\color{red!70!black}(+209759.8\%)} & {\tiny\color{green!60!black}(-12.9\%)} & {\tiny\color{green!60!black}(-14.5\%)} & {\tiny\color{green!60!black}(-56.3\%)} & {\tiny\color{red!70!black}(+934.5\%)} & {\tiny\color{green!60!black}(+137.7\%)} & {\tiny\color{green!60!black}(-7.4\%)} \\
+    keydiff & 66,040.12 & 4,287.42 & 202,253.77 & 257,773.59 & 0.208 & 0.198 & 5.993 & 2.467 & 167.43 & 5.95 \\
+     & {\tiny\color{red!70!black}(+267.0\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+879.9\%)} & {\tiny\color{red!70!black}(+1250.4\%)} & {\tiny\color{green!60!black}(-15.0\%)} & {\tiny\color{green!60!black}(-20.6\%)} & {\tiny\color{green!60!black}(-53.1\%)} & {\tiny\color{red!70!black}(+355.9\%)} & {\tiny\color{green!60!black}(+122.8\%)} & {\tiny\color{green!60!black}(-7.4\%)} \\
+    \bottomrule
+    \end{tabular}%
+    }
+    \vspace{0.1cm}
+    \footnotesize{PreT: Prefilling Time (s), TTFT: Time to First Token (s), T/Tok: Time per Token (ms), GenT: Generation Time (s), TP: Throughput (tokens/s), Mem: Peak Memory (GB)}
+\end{table*}
+
+% ============================================================
+% Table: Wikitext Dataset
+% ============================================================
+
+\begin{table*}[t]
+    \centering
+    \footnotesize
+    \caption{Main results on Wikitext dataset with Pythia model. Best scores are in \textbf{bold}.}
+    \vspace{-0.2cm}
+    \label{tab:wikitext}
+    \setlength{\tabcolsep}{2.5pt}
+    \renewcommand{\arraystretch}{1.1}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l|cccccccccc}
+    \toprule
+    \textbf{Method} & \textbf{PPL} & \textbf{Front} & \textbf{Mid} & \textbf{Back} & \textbf{PreT} & \textbf{TTFT} & \textbf{T/Tok} & \textbf{GenT} & \textbf{TP} & \textbf{Mem} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{yellow!12}\textbf{No Compression}} \\
+    \rowcolor{gray!8}
+    no\_compress & 80.25 & 87.68 & 57.47 & 75.46 & 0.017 & 0.053 & 6.053 & 6.223 & 160.81 & 0.20 \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 30\%}} \\
+    random & 80.17 & 87.68 & 61.91 & 78.94 & 0.018 & 0.039 & 5.685 & 5.575 & 179.37 & 0.20 \\
+     & {\tiny\color{green!60!black}(-0.1\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+7.7\%)} & {\tiny\color{red!70!black}(+4.6\%)} & {\tiny\color{red!70!black}(+10.7\%)} & {\tiny\color{green!60!black}(-25.8\%)} & {\tiny\color{green!60!black}(-6.1\%)} & {\tiny\color{green!60!black}(-10.4\%)} & {\tiny\color{green!60!black}(+11.5\%)} & {\tiny\color{green!60!black}(-1.0\%)} \\
+    streaming\_llm & 80.94 & 87.68 & 58.89 & 76.03 & 0.018 & 0.048 & 5.734 & 5.653 & 176.91 & 0.20 \\
+     & {\tiny\color{red!70!black}(+0.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+2.5\%)} & {\tiny\color{red!70!black}(+0.8\%)} & {\tiny\color{red!70!black}(+5.9\%)} & {\tiny\color{green!60!black}(-9.7\%)} & {\tiny\color{green!60!black}(-5.3\%)} & {\tiny\color{green!60!black}(-9.2\%)} & {\tiny\color{green!60!black}(+10.0\%)} & {\tiny\color{green!60!black}(-1.0\%)} \\
+    snapkv & 83.99 & 87.68 & 66.26 & 79.58 & 0.020 & 0.052 & 6.763 & 6.539 & 153.95 & 0.20 \\
+     & {\tiny\color{red!70!black}(+4.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+15.3\%)} & {\tiny\color{red!70!black}(+5.5\%)} & {\tiny\color{red!70!black}(+19.8\%)} & {\tiny\color{green!60!black}(-2.6\%)} & {\tiny\color{red!70!black}(+11.7\%)} & {\tiny\color{red!70!black}(+5.1\%)} & {\tiny\color{red!70!black}(-4.3\%)} & {\tiny\color{green!60!black}(-1.0\%)} \\
+    lagkv & \textbf{75.78} & 87.68 & 58.24 & 72.00 & 0.016 & 0.042 & 5.658 & 5.626 & 177.79 & 0.20 \\
+     & {\tiny\color{green!60!black}(-5.6\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+1.3\%)} & {\tiny\color{green!60!black}(-4.6\%)} & {\tiny\color{green!60!black}(-3.6\%)} & {\tiny\color{green!60!black}(-21.0\%)} & {\tiny\color{green!60!black}(-6.5\%)} & {\tiny\color{green!60!black}(-9.6\%)} & {\tiny\color{green!60!black}(+10.6\%)} & {\tiny\color{green!60!black}(-1.0\%)} \\
+    keydiff & 77.70 & 87.68 & 59.95 & 79.90 & 0.016 & 0.041 & 5.571 & 5.782 & 173.41 & 0.20 \\
+     & {\tiny\color{green!60!black}(-3.2\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+4.3\%)} & {\tiny\color{red!70!black}(+5.9\%)} & {\tiny\color{green!60!black}(-4.4\%)} & {\tiny\color{green!60!black}(-23.7\%)} & {\tiny\color{green!60!black}(-8.0\%)} & {\tiny\color{green!60!black}(-7.1\%)} & {\tiny\color{green!60!black}(+7.8\%)} & {\tiny\color{green!60!black}(-1.0\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 50\%}} \\
+    random & 86.49 & 87.68 & 69.01 & 84.51 & 0.015 & 0.039 & 5.684 & 5.623 & 177.91 & 0.20 \\
+     & {\tiny\color{red!70!black}(+7.8\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+20.1\%)} & {\tiny\color{red!70!black}(+12.0\%)} & {\tiny\color{green!60!black}(-9.4\%)} & {\tiny\color{green!60!black}(-25.8\%)} & {\tiny\color{green!60!black}(-6.1\%)} & {\tiny\color{green!60!black}(-9.6\%)} & {\tiny\color{green!60!black}(+10.6\%)} & {\tiny\color{green!60!black}(-1.6\%)} \\
+    streaming\_llm & \textbf{78.21} & 87.68 & 59.31 & 89.52 & 0.015 & 0.047 & 5.916 & 5.783 & 173.16 & 0.20 \\
+     & {\tiny\color{green!60!black}(-2.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+3.2\%)} & {\tiny\color{red!70!black}(+18.6\%)} & {\tiny\color{green!60!black}(-10.7\%)} & {\tiny\color{green!60!black}(-11.9\%)} & {\tiny\color{green!60!black}(-2.3\%)} & {\tiny\color{green!60!black}(-7.1\%)} & {\tiny\color{green!60!black}(+7.7\%)} & {\tiny\color{green!60!black}(-1.6\%)} \\
+    snapkv & 92.00 & 87.68 & 65.85 & 84.43 & 0.018 & 0.045 & 5.635 & 5.647 & 177.31 & 0.20 \\
+     & {\tiny\color{red!70!black}(+14.6\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+14.6\%)} & {\tiny\color{red!70!black}(+11.9\%)} & {\tiny\color{red!70!black}(+9.0\%)} & {\tiny\color{green!60!black}(-15.0\%)} & {\tiny\color{green!60!black}(-6.9\%)} & {\tiny\color{green!60!black}(-9.3\%)} & {\tiny\color{green!60!black}(+10.3\%)} & {\tiny\color{green!60!black}(-1.6\%)} \\
+    lagkv & 82.38 & 87.68 & 59.44 & 76.67 & 0.028 & 0.069 & 5.778 & 5.772 & 173.27 & 0.20 \\
+     & {\tiny\color{red!70!black}(+2.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+3.4\%)} & {\tiny\color{red!70!black}(+1.6\%)} & {\tiny\color{red!70!black}(+66.8\%)} & {\tiny\color{red!70!black}(+30.0\%)} & {\tiny\color{green!60!black}(-4.5\%)} & {\tiny\color{green!60!black}(-7.2\%)} & {\tiny\color{green!60!black}(+7.7\%)} & {\tiny\color{green!60!black}(-1.6\%)} \\
+    keydiff & 83.96 & 87.68 & 64.02 & 83.82 & 0.015 & 0.043 & 5.620 & 5.676 & 176.20 & 0.20 \\
+     & {\tiny\color{red!70!black}(+4.6\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+11.4\%)} & {\tiny\color{red!70!black}(+11.1\%)} & {\tiny\color{green!60!black}(-9.9\%)} & {\tiny\color{green!60!black}(-19.3\%)} & {\tiny\color{green!60!black}(-7.1\%)} & {\tiny\color{green!60!black}(-8.8\%)} & {\tiny\color{green!60!black}(+9.6\%)} & {\tiny\color{green!60!black}(-1.6\%)} \\
+    \midrule
+    \multicolumn{11}{c}{\cellcolor{orange!12}\textbf{Compression Ratio 70\%}} \\
+    random & 93.81 & 87.68 & 76.69 & 95.86 & 0.012 & 0.039 & 5.481 & 5.462 & 183.10 & 0.20 \\
+     & {\tiny\color{red!70!black}(+16.9\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+33.4\%)} & {\tiny\color{red!70!black}(+27.0\%)} & {\tiny\color{green!60!black}(-28.4\%)} & {\tiny\color{green!60!black}(-26.9\%)} & {\tiny\color{green!60!black}(-9.4\%)} & {\tiny\color{green!60!black}(-12.2\%)} & {\tiny\color{green!60!black}(+13.9\%)} & {\tiny\color{green!60!black}(-2.2\%)} \\
+    streaming\_llm & 93.49 & 87.68 & 72.89 & 97.19 & 0.015 & 0.041 & 5.792 & 5.854 & 170.90 & 0.20 \\
+     & {\tiny\color{red!70!black}(+16.5\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+26.8\%)} & {\tiny\color{red!70!black}(+28.8\%)} & {\tiny\color{green!60!black}(-11.8\%)} & {\tiny\color{green!60!black}(-23.5\%)} & {\tiny\color{green!60!black}(-4.3\%)} & {\tiny\color{green!60!black}(-5.9\%)} & {\tiny\color{green!60!black}(+6.3\%)} & {\tiny\color{green!60!black}(-2.2\%)} \\
+    snapkv & 93.65 & 87.68 & 87.80 & 91.55 & 0.015 & 0.044 & 5.594 & 5.616 & 178.11 & 0.20 \\
+     & {\tiny\color{red!70!black}(+16.7\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+52.8\%)} & {\tiny\color{red!70!black}(+21.3\%)} & {\tiny\color{green!60!black}(-10.9\%)} & {\tiny\color{green!60!black}(-16.5\%)} & {\tiny\color{green!60!black}(-7.6\%)} & {\tiny\color{green!60!black}(-9.8\%)} & {\tiny\color{green!60!black}(+10.8\%)} & {\tiny\color{green!60!black}(-2.2\%)} \\
+    lagkv & \textbf{90.09} & 87.68 & 71.37 & 90.74 & 0.017 & 0.041 & 5.702 & 5.670 & 176.37 & 0.20 \\
+     & {\tiny\color{red!70!black}(+12.3\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+24.2\%)} & {\tiny\color{red!70!black}(+20.3\%)} & {\tiny\color{red!70!black}(+5.2\%)} & {\tiny\color{green!60!black}(-23.0\%)} & {\tiny\color{green!60!black}(-5.8\%)} & {\tiny\color{green!60!black}(-8.9\%)} & {\tiny\color{green!60!black}(+9.7\%)} & {\tiny\color{green!60!black}(-2.2\%)} \\
+    keydiff & 93.08 & 87.68 & 67.86 & 89.82 & 0.015 & 0.047 & 5.816 & 5.680 & 176.11 & 0.20 \\
+     & {\tiny\color{red!70!black}(+16.0\%)} & {\tiny\color{gray}(0.0\%)} & {\tiny\color{red!70!black}(+18.1\%)} & {\tiny\color{red!70!black}(+19.0\%)} & {\tiny\color{green!60!black}(-8.8\%)} & {\tiny\color{green!60!black}(-12.1\%)} & {\tiny\color{green!60!black}(-3.9\%)} & {\tiny\color{green!60!black}(-8.7\%)} & {\tiny\color{green!60!black}(+9.5\%)} & {\tiny\color{green!60!black}(-2.2\%)} \\
+    \bottomrule
+    \end{tabular}%
+    }
+    \vspace{0.1cm}
+    \footnotesize{PreT: Prefilling Time (s), TTFT: Time to First Token (s), T/Tok: Time per Token (ms), GenT: Generation Time (s), TP: Throughput (tokens/s), Mem: Peak Memory (GB)}
+\end{table*}
