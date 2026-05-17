@@ -72,7 +72,13 @@ def parse_args():
         "--press_method",
         type=str,
         default="knorm",
-        choices=["no_compress", "random", "streaming_llm", "snapkv", "lagkv", "keydiff"],
+        choices=[
+            "no_compress", "random", "streaming_llm", "snapkv", "lagkv", "keydiff", "knorm",
+            "expected_attention", "compactor",
+            "adakv_expected_attention", "adakv_knorm", "criticalkv_expected_attention",
+            "risk_aware_ensemble", "risk_aware_ensemble_light",
+            "adakv_risk_aware_ensemble", "adakv_risk_aware_ensemble_light",
+        ],
         help="Compression method to use"
     )
 
@@ -82,6 +88,20 @@ def parse_args():
         type=int,
         default=500,
         help="Maximum number of new tokens to generate"
+    )
+
+    # Context window 参数
+    parser.add_argument(
+        "--prompt_length",
+        type=int,
+        default=1024,
+        help="Number of tokens for the prompt (prefill + compression)"
+    )
+    parser.add_argument(
+        "--eval_length",
+        type=int,
+        default=128,
+        help="Number of tokens for evaluation (PPL calculation)"
     )
 
     # 测试参数
@@ -212,6 +232,12 @@ def create_press(press_method: str, compression_ratio: float):
         SnapKVPress,
         LagKVPress,
         KeyDiffPress,
+        KnormPress,
+        ExpectedAttentionPress,
+        CompactorPress,
+        AdaKVPress,
+        CriticalKVPress,
+        RiskAwareEnsemblePress,
     )
 
     press_map = {
@@ -220,7 +246,40 @@ def create_press(press_method: str, compression_ratio: float):
         "snapkv": SnapKVPress,
         "lagkv": LagKVPress,
         "keydiff": KeyDiffPress,
+        "knorm": KnormPress,
+        "expected_attention": ExpectedAttentionPress,
+        "compactor": CompactorPress,
     }
+
+    # Wrapper-based presses that need special construction
+    wrapper_map = {
+        "adakv_expected_attention": lambda cr: AdaKVPress(
+            ExpectedAttentionPress(compression_ratio=cr)
+        ),
+        "criticalkv_expected_attention": lambda cr: CriticalKVPress(
+            ExpectedAttentionPress(compression_ratio=cr)
+        ),
+        "adakv_knorm": lambda cr: AdaKVPress(
+            KnormPress(compression_ratio=cr)
+        ),
+        "risk_aware_ensemble": lambda cr: RiskAwareEnsemblePress(compression_ratio=cr),
+        "risk_aware_ensemble_light": lambda cr: RiskAwareEnsemblePress(
+            compression_ratio=cr,
+            presses=[KnormPress(), KeyDiffPress(), SnapKVPress()],
+        ),
+        "adakv_risk_aware_ensemble": lambda cr: AdaKVPress(
+            RiskAwareEnsemblePress(compression_ratio=cr)
+        ),
+        "adakv_risk_aware_ensemble_light": lambda cr: AdaKVPress(
+            RiskAwareEnsemblePress(
+                compression_ratio=cr,
+                presses=[KnormPress(), KeyDiffPress(), SnapKVPress()],
+            )
+        ),
+    }
+
+    if press_method in wrapper_map:
+        return wrapper_map[press_method](compression_ratio)
 
     if press_method not in press_map:
         raise ValueError(f"Unknown press method: {press_method}")
@@ -370,8 +429,12 @@ def main():
     # 加载模型
     print("\nLoading model...")
     model_path = get_model_path(args.model)
-    evaluator = KVCacheEvaluator(model_path)
-    print("Model loaded successfully")
+    evaluator = KVCacheEvaluator(
+        model_path,
+        prompt_length=args.prompt_length,
+        eval_length=args.eval_length,
+    )
+    print(f"Model loaded successfully (prompt={args.prompt_length}, eval={args.eval_length})")
 
     # 创建 press
     print("\nCreating press...")
@@ -402,10 +465,11 @@ def main():
         question = sample.get("question")
         metadata = sample.get("metadata", {})
 
-        # 跳过太短的样本（避免 StreamingLLM 等方法 assert 失败）
+        # 跳过太短的样本（需要足够的 prompt + eval tokens）
         n_tokens = len(evaluator.tokenizer(text)["input_ids"])
-        if n_tokens < 16:
-            print(f"    Skipping sample (only {n_tokens} tokens)")
+        min_tokens = args.prompt_length + args.eval_length
+        if n_tokens < min_tokens:
+            print(f"    Skipping sample (only {n_tokens} tokens, need {min_tokens})")
             continue
 
         # 评估单个样本

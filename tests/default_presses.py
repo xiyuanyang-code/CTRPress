@@ -21,6 +21,7 @@ from kvpress import (
     PyramidKVPress,
     QFilterPress,
     RandomPress,
+    RiskAwareEnsemblePress,
     SimLayerKVPress,
     SnapKVPress,
     StreamingLLMPress,
@@ -149,6 +150,13 @@ default_presses = [
             {"compression_ratio": 0.8},
             {"structured": False, "compression_ratio": 0.5},
             {"structured": False, "compression_ratio": 0.8},
+        ],
+    },
+    {
+        "cls": RiskAwareEnsemblePress,
+        "kwargs": [
+            {"compression_ratio": 0.2, "presses": [KnormPress(), KeyDiffPress(), SnapKVPress()]},
+            {"compression_ratio": 0.8, "presses": [KnormPress(), KeyDiffPress(), SnapKVPress()]},
         ],
     },
 ]

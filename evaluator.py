@@ -39,15 +39,20 @@ class EvaluationMetrics:
 class KVCacheEvaluator:
     """KV Cache 压缩评估器"""
 
-    def __init__(self, model_path: str, device: str = "cuda:0"):
+    def __init__(self, model_path: str, device: str = "cuda:0",
+                 prompt_length: int = 1024, eval_length: int = 128):
         """
         初始化评估器
 
         Args:
             model_path: 模型路径
             device: 设备
+            prompt_length: prompt 部分的 token 数（用于 prefill + 压缩）
+            eval_length: eval 部分的 token 数（用于计算 PPL / 生成）
         """
         self.device = device
+        self.prompt_length = prompt_length
+        self.eval_length = eval_length
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
             dtype=torch.float16,
@@ -66,9 +71,8 @@ class KVCacheEvaluator:
         """
         计算困惑度
 
-        正确的实现方式：
-        1. 用前一半文本做 prefill（带压缩），构建 KV cache
-        2. 用压缩后的 KV cache 计算后一半文本的 PPL
+        1. 用前 prompt_length 个 token 做 prefill（带压缩），构建 KV cache
+        2. 用压缩后的 KV cache 计算接下来 eval_length 个 token 的 PPL
 
         Args:
             text: 输入文本
@@ -81,10 +85,15 @@ class KVCacheEvaluator:
         input_ids = inputs["input_ids"]
         seq_len = input_ids.shape[1]
 
-        # 分割：前半部分作为 context，后半部分用于计算 PPL
-        split = seq_len // 2
-        context_ids = input_ids[:, :split]
-        eval_ids = input_ids[:, split:]
+        total_needed = self.prompt_length + self.eval_length
+        if seq_len < total_needed:
+            raise ValueError(
+                f"Input has {seq_len} tokens, need at least {total_needed} "
+                f"(prompt={self.prompt_length} + eval={self.eval_length})"
+            )
+
+        context_ids = input_ids[:, :self.prompt_length]
+        eval_ids = input_ids[:, self.prompt_length:self.prompt_length + self.eval_length]
 
         with torch.no_grad():
             cache = DynamicCache()
@@ -98,7 +107,7 @@ class KVCacheEvaluator:
                 lm(input_ids=context_ids, past_key_values=cache)
 
             # Step 2: 用 cache 计算评估部分的 PPL
-            position_ids = torch.arange(split, seq_len, device=self.device).unsqueeze(0)
+            position_ids = torch.arange(self.prompt_length, self.prompt_length + self.eval_length, device=self.device).unsqueeze(0)
             outputs = self.model(
                 input_ids=eval_ids,
                 past_key_values=cache,
@@ -114,10 +123,11 @@ class KVCacheEvaluator:
         """
         计算按位置的困惑度（前、中、后）
 
-        对每个 1/3 段：
-        - Front: 无 context，直接计算前 1/3 的 PPL
-        - Middle: 先 prefill 前 1/3，再计算中间 1/3 的 PPL
-        - Back: 先 prefill 前 2/3，再计算最后 1/3 的 PPL
+        对 prompt_length 的 context 做 prefill + 压缩，然后对 eval_length
+        等分为三段分别计算 PPL：
+        - Front: eval 前 1/3
+        - Middle: eval 中间 1/3
+        - Back: eval 后 1/3
 
         Args:
             text: 输入文本
@@ -129,36 +139,46 @@ class KVCacheEvaluator:
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
         input_ids = inputs["input_ids"]
         seq_len = input_ids.shape[1]
-        segment_len = seq_len // 3
+
+        total_needed = self.prompt_length + self.eval_length
+        if seq_len < total_needed:
+            raise ValueError(
+                f"Input has {seq_len} tokens, need at least {total_needed} "
+                f"(prompt={self.prompt_length} + eval={self.eval_length})"
+            )
+
+        context_ids = input_ids[:, :self.prompt_length]
+        eval_ids = input_ids[:, self.prompt_length:self.prompt_length + self.eval_length]
+        segment_len = self.eval_length // 3
 
         position_ppls = []
         for i in range(3):
-            start = i * segment_len
-            end = (i + 1) * segment_len if i < 2 else seq_len
+            seg_start = i * segment_len
+            seg_end = (i + 1) * segment_len if i < 2 else self.eval_length
 
-            context_ids = input_ids[:, :start]
-            eval_ids = input_ids[:, start:end]
+            seg_eval_ids = eval_ids[:, seg_start:seg_end]
 
             with torch.no_grad():
                 cache = DynamicCache()
 
-                # Prefill context（如果有）
-                if start > 0:
-                    lm = self._get_language_model()
-                    if press:
-                        with press(self.model):
-                            lm(input_ids=context_ids, past_key_values=cache)
-                    else:
+                # Prefill context（带或不带压缩）
+                lm = self._get_language_model()
+                if press:
+                    with press(self.model):
                         lm(input_ids=context_ids, past_key_values=cache)
+                else:
+                    lm(input_ids=context_ids, past_key_values=cache)
 
                 # 计算该段的 PPL
-                position_ids = torch.arange(start, end, device=self.device).unsqueeze(0)
+                abs_start = self.prompt_length + seg_start
+                abs_end = self.prompt_length + seg_end
+                position_ids = torch.arange(abs_start, abs_end, device=self.device).unsqueeze(0)
                 try:
                     outputs = self.model(
-                        input_ids=eval_ids,
+                        input_ids=seg_eval_ids,
                         past_key_values=cache,
                         position_ids=position_ids,
-                        labels=eval_ids,
+                        labels=seg_eval_ids,
                     )
                     ppl = torch.exp(outputs.loss).item()
                 except (AssertionError, RuntimeError):
