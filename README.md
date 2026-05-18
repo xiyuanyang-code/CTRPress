@@ -35,8 +35,7 @@ This project extends the kvpress framework with an **end-to-end evaluation pipel
 | | Time per Token | Per-token generation time (ms) |
 | | Generation Time | Total generation time (s) |
 | | Throughput | Throughput (tokens/s) |
-| **Memory Efficiency** | Peak Memory Usage | Peak GPU memory usage (GB) |
-| | KV Cache Size | KV cache size (GB) |
+| **Memory Efficiency** | KV Cache Size | KV cache tensor size (GB) |
 
 ### Supported Compression Methods
 

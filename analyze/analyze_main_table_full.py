@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 分析主表格：从结果文件夹中读取指标，生成 CSV 文件
 
@@ -28,7 +31,7 @@ DATASETS = ["nolima", "pg19", "wikitext"]
 METRICS = [
     "ppl", "front_ppl", "middle_ppl", "back_ppl",
     "prefilling_time", "ttft", "time_per_token", "generation_time",
-    "throughput", "peak_memory_usage", "kv_cache_size"
+    "throughput", "kv_cache_size"
 ]
 
 

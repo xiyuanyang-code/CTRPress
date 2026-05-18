@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 分析消融实验：从 results_ablation 中读取指标，画出 compression_ratio vs 指标的折线图
 
@@ -52,7 +55,6 @@ METRICS = [
     "time_per_token",
     "generation_time",
     "throughput",
-    "peak_memory_usage",
     "kv_cache_size",
 ]
 
@@ -62,7 +64,6 @@ METRIC_LABELS = {
     "time_per_token": "Time per Token (ms)",
     "generation_time": "Generation Time (s)",
     "throughput": "Throughput (tokens/s)",
-    "peak_memory_usage": "Peak Memory Usage (GB)",
     "kv_cache_size": "KV Cache Size (GB)",
 }
 

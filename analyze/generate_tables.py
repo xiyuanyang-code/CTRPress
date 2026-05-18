@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """Generate LaTeX tables from CSV data."""
 
 import pandas as pd
@@ -81,7 +84,7 @@ def generate_table(dataset, ratio):
 
     # No compression row
     lines.append(r"    \rowcolor{gray!8}")
-    lines.append(f"    no\\_compress & {format_number(base_row['ppl'])} & {format_number(base_row['front_ppl'])} & {format_number(base_row['middle_ppl'])} & {format_number(base_row['back_ppl'])} & {format_number(base_row['prefilling_time'], 3)} & {format_number(base_row['ttft'], 3)} & {format_number(base_row['time_per_token'], 3)} & {format_number(base_row['generation_time'], 3)} & {format_number(base_row['throughput'], 2)} & {format_number(base_row['peak_memory_usage'], 2)} \\\\")
+    lines.append(f"    no\\_compress & {format_number(base_row['ppl'])} & {format_number(base_row['front_ppl'])} & {format_number(base_row['middle_ppl'])} & {format_number(base_row['back_ppl'])} & {format_number(base_row['prefilling_time'], 3)} & {format_number(base_row['ttft'], 3)} & {format_number(base_row['time_per_token'], 3)} & {format_number(base_row['generation_time'], 3)} & {format_number(base_row['throughput'], 2)} & {format_number(base_row['kv_cache_size'], 2)} \\\\")
 
     lines.append(r"    \midrule")
 
@@ -102,16 +105,16 @@ def generate_table(dataset, ratio):
         tptok_pct = calculate_percentage(row['time_per_token'], base_row['time_per_token'])
         gent_pct = calculate_percentage(row['generation_time'], base_row['generation_time'])
         tp_pct = calculate_percentage(row['throughput'], base_row['throughput'])
-        mem_pct = calculate_percentage(row['peak_memory_usage'], base_row['peak_memory_usage'])
+        mem_pct = calculate_percentage(row['kv_cache_size'], base_row['kv_cache_size'])
 
-        lines.append(f"    {method_name} & {ppl_str} & {format_number(row['front_ppl'])} & {format_number(row['middle_ppl'])} & {format_number(row['back_ppl'])} & {format_number(row['prefilling_time'], 3)} & {format_number(row['ttft'], 3)} & {format_number(row['time_per_token'], 3)} & {format_number(row['generation_time'], 3)} & {format_number(row['throughput'], 2)} & {format_number(row['peak_memory_usage'], 2)} \\\\")
+        lines.append(f"    {method_name} & {ppl_str} & {format_number(row['front_ppl'])} & {format_number(row['middle_ppl'])} & {format_number(row['back_ppl'])} & {format_number(row['prefilling_time'], 3)} & {format_number(row['ttft'], 3)} & {format_number(row['time_per_token'], 3)} & {format_number(row['generation_time'], 3)} & {format_number(row['throughput'], 2)} & {format_number(row['kv_cache_size'], 2)} \\\\")
         lines.append(f"     & {format_percentage(ppl_pct)} & {format_percentage(front_pct)} & {format_percentage(mid_pct)} & {format_percentage(back_pct)} & {format_percentage(pret_pct)} & {format_percentage(ttft_pct)} & {format_percentage(tptok_pct)} & {format_percentage(gent_pct)} & {format_percentage(tp_pct, higher_is_better=True)} & {format_percentage(mem_pct)} \\\\")
 
     lines.append(r"    \bottomrule")
     lines.append(r"    \end{tabular}%")
     lines.append(r"    }")
     lines.append(r"    \vspace{0.1cm}")
-    lines.append(r"    \footnotesize{PreT: Prefilling Time (s), TTFT: Time to First Token (s), T/Tok: Time per Token (ms), GenT: Generation Time (s), TP: Throughput (tokens/s), Mem: Peak Memory (GB)}")
+    lines.append(r"    \footnotesize{PreT: Prefilling Time (s), TTFT: Time to First Token (s), T/Tok: Time per Token (ms), GenT: Generation Time (s), TP: Throughput (tokens/s), Mem: KV Cache Memory (GB)}")
     lines.append(r"\end{table*}")
 
     return '\n'.join(lines)
