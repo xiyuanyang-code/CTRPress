@@ -223,3 +223,6 @@ models
 data
 analyze/tables
 spec
+full
+analyze/full_tables
+papers

@@ -11,6 +11,7 @@ from kvpress.presses.cam_press import CAMPress
 from kvpress.presses.chunk_press import ChunkPress
 from kvpress.presses.chunkkv_press import ChunkKVPress
 from kvpress.presses.compactor_press import CompactorPress
+from kvpress.presses.ctr_press import CTRPress, CTRRefinePress, CTRSemanticPress
 from kvpress.presses.composed_press import ComposedPress
 from kvpress.presses.criticalkv_press import CriticalAdaKVPress, CriticalKVPress
 from kvpress.presses.cur_press import CURPress
@@ -35,6 +36,7 @@ from kvpress.presses.per_layer_compression_press import PerLayerCompressionPress
 from kvpress.presses.prefill_decoding_press import PrefillDecodingPress
 from kvpress.presses.pyramidkv_press import PyramidKVPress
 from kvpress.presses.qfilter_press import QFilterPress
+from kvpress.presses.qsm_press import QAMergePress, QASemanticPress, QSMPress, QueryAwarePress
 from kvpress.presses.risk_aware_ensemble_press import RiskAwareEnsemblePress
 from kvpress.presses.random_press import RandomPress
 from kvpress.presses.scorer_press import ScorerPress
@@ -72,6 +74,13 @@ __all__ = [
     "DuoAttentionPress",
     "ChunkKVPress",
     "QFilterPress",
+    "CTRPress",
+    "CTRRefinePress",
+    "CTRSemanticPress",
+    "QAMergePress",
+    "QASemanticPress",
+    "QSMPress",
+    "QueryAwarePress",
     "PyramidKVPress",
     "FinchPress",
     "LagKVPress",

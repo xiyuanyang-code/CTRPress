@@ -78,6 +78,8 @@ def parse_args():
             "adakv_expected_attention", "adakv_knorm", "criticalkv_expected_attention",
             "risk_aware_ensemble", "risk_aware_ensemble_light",
             "adakv_risk_aware_ensemble", "adakv_risk_aware_ensemble_light",
+            "query_aware", "qa_semantic", "qa_merge", "qsm",
+            "ctr", "ctr_refine", "ctr_semantic", "pyramidkv",
         ],
         help="Compression method to use"
     )
@@ -171,8 +173,8 @@ def load_dataset(dataset_name: str, split: str = "test", max_samples: Optional[i
         df = pd.concat(dfs, ignore_index=True)
         texts = df["text"].tolist()
 
-        # 过滤空文本和太短的文本（至少 500 字符）
-        texts = [t for t in texts if len(t.strip()) >= 500]
+        # 过滤空文本
+        texts = [t for t in texts if len(t.strip()) > 0]
 
         # 按长度降序排列，优先使用较长的文本
         texts.sort(key=len, reverse=True)
@@ -221,7 +223,7 @@ def load_dataset(dataset_name: str, split: str = "test", max_samples: Optional[i
     return data
 
 
-def create_press(press_method: str, compression_ratio: float):
+def create_press(press_method: str, compression_ratio: float, tokenizer=None):
     """创建 press 对象"""
     if press_method == "no_compress":
         return None
@@ -238,6 +240,14 @@ def create_press(press_method: str, compression_ratio: float):
         AdaKVPress,
         CriticalKVPress,
         RiskAwareEnsemblePress,
+        QueryAwarePress,
+        QSMPress,
+        QASemanticPress,
+        QAMergePress,
+        CTRPress,
+        CTRRefinePress,
+        CTRSemanticPress,
+        PyramidKVPress,
     )
 
     press_map = {
@@ -249,7 +259,26 @@ def create_press(press_method: str, compression_ratio: float):
         "knorm": KnormPress,
         "expected_attention": ExpectedAttentionPress,
         "compactor": CompactorPress,
+        "query_aware": QueryAwarePress,
+        "qa_semantic": QASemanticPress,
+        "qa_merge": QAMergePress,
+        "qsm": QSMPress,
+        "pyramidkv": PyramidKVPress,
     }
+
+    # QSM/CTR presses that need a tokenizer
+    qsm_map = {
+        "query_aware": lambda cr: QueryAwarePress(compression_ratio=cr),
+        "qa_semantic": lambda cr: QASemanticPress(compression_ratio=cr, tokenizer=tokenizer),
+        "qa_merge": lambda cr: QAMergePress(compression_ratio=cr),
+        "qsm": lambda cr: QSMPress(compression_ratio=cr, tokenizer=tokenizer),
+        "ctr": lambda cr: CTRPress(compression_ratio=cr, tokenizer=tokenizer),
+        "ctr_refine": lambda cr: CTRRefinePress(compression_ratio=cr, tokenizer=tokenizer),
+        "ctr_semantic": lambda cr: CTRSemanticPress(compression_ratio=cr, tokenizer=tokenizer),
+    }
+
+    if press_method in qsm_map:
+        return qsm_map[press_method](compression_ratio)
 
     # Wrapper-based presses that need special construction
     wrapper_map = {
@@ -434,11 +463,22 @@ def main():
         prompt_length=args.prompt_length,
         eval_length=args.eval_length,
     )
+
+    # 自适应 prompt_length：当数据集文本普遍较短时自动降低
+    sample_token_lens = [len(evaluator.tokenizer(s["text"])["input_ids"]) for s in data]
+    max_text_tokens = max(sample_token_lens) if sample_token_lens else 0
+    min_required = args.prompt_length + args.eval_length
+    if max_text_tokens < min_required:
+        new_prompt_length = max(128, max_text_tokens - args.eval_length - 50)
+        print(f"[Adaptive] Dataset max text = {max_text_tokens} tokens < required {min_required}")
+        print(f"[Adaptive] Auto-adjusting prompt_length: {args.prompt_length} -> {new_prompt_length}")
+        args.prompt_length = new_prompt_length
+        evaluator.prompt_length = new_prompt_length
     print(f"Model loaded successfully (prompt={args.prompt_length}, eval={args.eval_length})")
 
     # 创建 press
     print("\nCreating press...")
-    press = create_press(args.press_method, args.compress_ratio)
+    press = create_press(args.press_method, args.compress_ratio, tokenizer=evaluator.tokenizer)
     print(f"Press created: {args.press_method} (ratio={args.compress_ratio})")
 
     # 评估所有样本
@@ -512,13 +552,16 @@ def main():
     all_metrics = [m for sample in results["samples"] for m in sample["metrics"]]
     print(f"Total samples: {len(data)}")
     print(f"Total measurements: {len(all_metrics)}")
-    print(f"\nAverage metrics:")
-    print(f"  PPL: {np.mean([m['ppl'] for m in all_metrics]):.2f}")
-    print(f"  Prefilling Time: {np.mean([m['prefilling_time'] for m in all_metrics]):.3f}s")
-    print(f"  TTFT: {np.mean([m['ttft'] for m in all_metrics]):.3f}s")
-    print(f"  Throughput: {np.mean([m['throughput'] for m in all_metrics]):.2f} tokens/s")
-    print(f"  Peak Memory: {np.mean([m['peak_memory_usage'] for m in all_metrics]):.2f} GB")
-    print(f"  KV Cache Size: {np.mean([m['kv_cache_size'] for m in all_metrics]):.2f} GB")
+    if not all_metrics:
+        print("\nNo valid samples were evaluated. All samples may have been too short.")
+    else:
+        print(f"\nAverage metrics:")
+        print(f"  PPL: {np.mean([m['ppl'] for m in all_metrics]):.2f}")
+        print(f"  Prefilling Time: {np.mean([m['prefilling_time'] for m in all_metrics]):.3f}s")
+        print(f"  TTFT: {np.mean([m['ttft'] for m in all_metrics]):.3f}s")
+        print(f"  Throughput: {np.mean([m['throughput'] for m in all_metrics]):.2f} tokens/s")
+        print(f"  Peak Memory: {np.mean([m['peak_memory_usage'] for m in all_metrics]):.2f} GB")
+        print(f"  KV Cache Size: {np.mean([m['kv_cache_size'] for m in all_metrics]):.2f} GB")
     print(f"\nResults saved to: {run_dir}")
 
 

@@ -21,7 +21,7 @@ fi
 
 COMPRESSION_RATIOS=(0.25 0.50 0.75 0.875)
 DATASETS=("pg19" "wikitext" "nolima")
-MAX_NEW_TOKENS=1000
+MAX_NEW_TOKENS=128
 PROMPT_LENGTH=1024
 EVAL_LENGTH=128
 
@@ -42,7 +42,7 @@ for DATASET in "${DATASETS[@]}"; do
         --eval_length "$EVAL_LENGTH" \
         --n_repeats 3 \
         --max_samples 1 \
-        --output_dir results_main
+        --output_dir results_main_2
 
   done
 done

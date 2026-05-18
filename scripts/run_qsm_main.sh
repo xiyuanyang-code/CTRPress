@@ -1,22 +1,24 @@
 #!/bin/bash
 
-# Usage: bash run_maintable.sh <MODEL> <PRESS_METHOD>
-# Example: bash run_maintable.sh qwen_3_1.7b snapkv
+# Usage: bash run_qsm_main.sh <MODEL> <PRESS_METHOD>
+# Example: bash run_qsm_main.sh qwen_3_1.7b qsm
+# QSM-Press: query_aware | qa_semantic | qa_merge | qsm
+# CTR-Press: ctr_refine | ctr_semantic | ctr
 # 3 ratios × 3 datasets = 9 runs per invocation
 
 MODEL=$1
 PRESS_METHOD=$2
 
 if [ -z "$MODEL" ] || [ -z "$PRESS_METHOD" ]; then
-    echo "Usage: bash run_maintable.sh <MODEL> <PRESS_METHOD>"
+    echo "Usage: bash run_qsm_main.sh <MODEL> <PRESS_METHOD>"
     echo "  MODEL: pythia | qwen_3_1.7b"
-    echo "  PRESS_METHOD: no_compress | random | streaming_llm | snapkv | lagkv | keydiff"
+    echo "  PRESS_METHOD: query_aware | qa_semantic | qa_merge | qsm | ctr_refine | ctr_semantic | ctr"
     exit 1
 fi
 
 COMPRESSION_RATIOS=(0.3 0.5 0.7)
 DATASETS=("nolima" "pg19" "wikitext")
-MAX_NEW_TOKENS=1000
+MAX_NEW_TOKENS=128
 PROMPT_LENGTH=1024
 EVAL_LENGTH=128
 
@@ -37,7 +39,7 @@ for DATASET in "${DATASETS[@]}"; do
         --eval_length "$EVAL_LENGTH" \
         --n_repeats 3 \
         --max_samples 1 \
-        --output_dir results
+        --output_dir results_qsm_2
 
   done
 done

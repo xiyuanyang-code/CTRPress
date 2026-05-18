@@ -109,4 +109,13 @@ class PyramidKVPress(SnapKVPress):
         keys = keys.gather(2, indices).contiguous()
         values = values.gather(2, indices).contiguous()
 
+        # Pad back to original size to keep cache size uniform across layers
+        pad_len = k_len - n_kept
+        if pad_len > 0:
+            # Use mean of kept tokens as padding (neutral, avoids NaN)
+            pad_keys = keys.mean(dim=2, keepdim=True).expand(-1, -1, pad_len, -1)
+            pad_values = values.mean(dim=2, keepdim=True).expand(-1, -1, pad_len, -1)
+            keys = torch.cat([keys, pad_keys], dim=2)
+            values = torch.cat([values, pad_values], dim=2)
+
         return keys, values

@@ -31,15 +31,18 @@ plt.rcParams.update({
 })
 
 # 配置
-RESULTS_DIR = "/data/xiyuanyang/EfficientNLP/results_ablation"
+RESULTS_DIR = "/data/xiyuanyang/EfficientNLP/results_ablation_full"
 OUTPUT_DIR = "/data/xiyuanyang/EfficientNLP/analyze/images"
 MODEL = "pythia"
-METHODS = ["keydiff", "lagkv", "snapkv", "streaming_llm"]
+METHODS = ["ctr", "ctr_refine", "ctr_semantic", "query_aware", "qa_merge", "qa_semantic", "qsm"]
 METHOD_LABELS = {
-    "keydiff": "KeyDiff",
-    "lagkv": "LagKV",
-    "snapkv": "SnapKV",
-    "streaming_llm": "StreamingLLM",
+    "ctr": "CTR",
+    "ctr_refine": "CTR Refine",
+    "ctr_semantic": "CTR Semantic",
+    "query_aware": "Query-Aware",
+    "qa_merge": "QA Merge",
+    "qa_semantic": "QA Semantic",
+    "qsm": "QSM",
 }
 
 # 要画的指标
@@ -101,6 +104,8 @@ def collect_results():
             continue
         if info["method"] not in METHODS:
             continue
+        if info["ratio"] > 0.6:
+            continue
 
         summary_file = os.path.join(folder_path, "summary.json")
         if not os.path.exists(summary_file):
@@ -142,8 +147,8 @@ def plot_metric(dataset: str, metric: str, method_data: dict, output_dir: str):
     fig, ax = plt.subplots(figsize=(8, 5))
 
     # 配色方案
-    colors = ["#2196F3", "#F44336", "#4CAF50", "#FF9800", "#9C27B0", "#00BCD4"]
-    markers = ["o", "s", "^", "D", "v", "P"]
+    colors = ["#2196F3", "#F44336", "#4CAF50", "#FF9800", "#9C27B0", "#00BCD4", "#795548"]
+    markers = ["o", "s", "^", "D", "v", "P", "X"]
 
     for idx, method in enumerate(METHODS):
         if method not in method_data:

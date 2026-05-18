@@ -6,7 +6,7 @@ import os
 
 def read_csv_data(dataset, ratio):
     """Read CSV data for a specific dataset and ratio."""
-    filename = f"tables/{dataset}_pythia_ratio{ratio}.csv"
+    filename = f"full_tables/{dataset}_pythia_ratio{ratio}.csv"
     df = pd.read_csv(filename)
     return df
 
@@ -45,30 +45,32 @@ def format_percentage(pct, higher_is_better=False):
         else:
             return r"{\tiny\color{green!60!black}(-" + f"{abs(pct):.1f}" + r"\%)}"
 
-def generate_table(dataset):
-    """Generate LaTeX table for a dataset."""
-    ratios = [0.3, 0.5, 0.7]
-    methods = ['random', 'streaming_llm', 'snapkv', 'lagkv', 'keydiff']
+def generate_table(dataset, ratio):
+    """Generate LaTeX table for a specific dataset and compression ratio."""
+    methods = [
+        'random', 'streaming_llm', 'snapkv', 'pyramidkv', 'lagkv', 'keydiff',
+        'query_aware', 'ctr', 'ctr_refine', 'ctr_semantic',
+        'qa_merge', 'qa_semantic', 'qsm'
+    ]
 
-    # Read base data (no compression)
-    base_df = read_csv_data(dataset, ratios[0])
+    # Read base data (no compression) and target ratio data
+    base_df = read_csv_data(dataset, ratio)
     base_row = base_df[base_df['method'] == 'no_compress'].iloc[0]
 
-    # Find best PPL for each ratio
-    best_ppl = {}
-    for ratio in ratios:
-        df = read_csv_data(dataset, ratio)
-        method_df = df[df['method'].isin(methods)]
-        best_ppl[ratio] = method_df['ppl'].min()
+    # Find best PPL
+    method_df = base_df[base_df['method'].isin(methods)]
+    best_ppl = method_df['ppl'].min()
+
+    ratio_pct = int(ratio * 100)
 
     # Generate table
     lines = []
     lines.append(r"\begin{table*}[t]")
     lines.append(r"    \centering")
     lines.append(r"    \footnotesize")
-    lines.append(f"    \\caption{{Main results on {dataset.capitalize()} dataset with Pythia model. Best scores are in \\textbf{{bold}}.}}")
+    lines.append(f"    \\caption{{Main results on {dataset.capitalize()} dataset with Pythia model (Compression Ratio {ratio_pct}\\%). Best PPL in \\textbf{{bold}}.}}")
     lines.append(r"    \vspace{-0.2cm}")
-    lines.append(f"    \\label{{tab:{dataset}}}")
+    lines.append(f"    \\label{{tab:{dataset}_ratio{ratio_pct}}}")
     lines.append(r"    \setlength{\tabcolsep}{2.5pt}")
     lines.append(r"    \renewcommand{\arraystretch}{1.1}")
     lines.append(r"    \resizebox{\textwidth}{!}{%")
@@ -78,43 +80,32 @@ def generate_table(dataset):
     lines.append(r"    \midrule")
 
     # No compression row
-    lines.append(r"    \multicolumn{11}{c}{\cellcolor{yellow!12}\textbf{No Compression}} \\")
     lines.append(r"    \rowcolor{gray!8}")
     lines.append(f"    no\\_compress & {format_number(base_row['ppl'])} & {format_number(base_row['front_ppl'])} & {format_number(base_row['middle_ppl'])} & {format_number(base_row['back_ppl'])} & {format_number(base_row['prefilling_time'], 3)} & {format_number(base_row['ttft'], 3)} & {format_number(base_row['time_per_token'], 3)} & {format_number(base_row['generation_time'], 3)} & {format_number(base_row['throughput'], 2)} & {format_number(base_row['peak_memory_usage'], 2)} \\\\")
 
-    # Compression ratio sections
-    for ratio in ratios:
-        ratio_pct = int(ratio * 100)
-        lines.append(r"    \midrule")
-        lines.append(f"    \\multicolumn{{11}}{{c}}{{\\cellcolor{{orange!12}}\\textbf{{Compression Ratio {ratio_pct}\\%}}}} \\\\")
+    lines.append(r"    \midrule")
 
-        df = read_csv_data(dataset, ratio)
+    # Compression methods
+    for method in methods:
+        row = base_df[base_df['method'] == method].iloc[0]
+        is_best = row['ppl'] == best_ppl
 
-        for method in methods:
-            row = df[df['method'] == method].iloc[0]
-            is_best = row['ppl'] == best_ppl[ratio]
+        method_name = method.replace('_', r'\_')
+        ppl_str = f"\\textbf{{{format_number(row['ppl'])}}}" if is_best else format_number(row['ppl'])
 
-            # Method name
-            method_name = method.replace('_', r'\_')
-            ppl_str = f"\\textbf{{{format_number(row['ppl'])}}}" if is_best else format_number(row['ppl'])
+        ppl_pct = calculate_percentage(row['ppl'], base_row['ppl'])
+        front_pct = calculate_percentage(row['front_ppl'], base_row['front_ppl'])
+        mid_pct = calculate_percentage(row['middle_ppl'], base_row['middle_ppl'])
+        back_pct = calculate_percentage(row['back_ppl'], base_row['back_ppl'])
+        pret_pct = calculate_percentage(row['prefilling_time'], base_row['prefilling_time'])
+        ttft_pct = calculate_percentage(row['ttft'], base_row['ttft'])
+        tptok_pct = calculate_percentage(row['time_per_token'], base_row['time_per_token'])
+        gent_pct = calculate_percentage(row['generation_time'], base_row['generation_time'])
+        tp_pct = calculate_percentage(row['throughput'], base_row['throughput'])
+        mem_pct = calculate_percentage(row['peak_memory_usage'], base_row['peak_memory_usage'])
 
-            # Calculate percentages for all columns
-            ppl_pct = calculate_percentage(row['ppl'], base_row['ppl'])
-            front_pct = calculate_percentage(row['front_ppl'], base_row['front_ppl'])
-            mid_pct = calculate_percentage(row['middle_ppl'], base_row['middle_ppl'])
-            back_pct = calculate_percentage(row['back_ppl'], base_row['back_ppl'])
-            pret_pct = calculate_percentage(row['prefilling_time'], base_row['prefilling_time'])
-            ttft_pct = calculate_percentage(row['ttft'], base_row['ttft'])
-            tptok_pct = calculate_percentage(row['time_per_token'], base_row['time_per_token'])
-            gent_pct = calculate_percentage(row['generation_time'], base_row['generation_time'])
-            tp_pct = calculate_percentage(row['throughput'], base_row['throughput'])
-            mem_pct = calculate_percentage(row['peak_memory_usage'], base_row['peak_memory_usage'])
-
-            # Data row
-            lines.append(f"    {method_name} & {ppl_str} & {format_number(row['front_ppl'])} & {format_number(row['middle_ppl'])} & {format_number(row['back_ppl'])} & {format_number(row['prefilling_time'], 3)} & {format_number(row['ttft'], 3)} & {format_number(row['time_per_token'], 3)} & {format_number(row['generation_time'], 3)} & {format_number(row['throughput'], 2)} & {format_number(row['peak_memory_usage'], 2)} \\\\")
-
-            # Percentage row (TP uses higher_is_better=True)
-            lines.append(f"     & {format_percentage(ppl_pct)} & {format_percentage(front_pct)} & {format_percentage(mid_pct)} & {format_percentage(back_pct)} & {format_percentage(pret_pct)} & {format_percentage(ttft_pct)} & {format_percentage(tptok_pct)} & {format_percentage(gent_pct)} & {format_percentage(tp_pct, higher_is_better=True)} & {format_percentage(mem_pct)} \\\\")
+        lines.append(f"    {method_name} & {ppl_str} & {format_number(row['front_ppl'])} & {format_number(row['middle_ppl'])} & {format_number(row['back_ppl'])} & {format_number(row['prefilling_time'], 3)} & {format_number(row['ttft'], 3)} & {format_number(row['time_per_token'], 3)} & {format_number(row['generation_time'], 3)} & {format_number(row['throughput'], 2)} & {format_number(row['peak_memory_usage'], 2)} \\\\")
+        lines.append(f"     & {format_percentage(ppl_pct)} & {format_percentage(front_pct)} & {format_percentage(mid_pct)} & {format_percentage(back_pct)} & {format_percentage(pret_pct)} & {format_percentage(ttft_pct)} & {format_percentage(tptok_pct)} & {format_percentage(gent_pct)} & {format_percentage(tp_pct, higher_is_better=True)} & {format_percentage(mem_pct)} \\\\")
 
     lines.append(r"    \bottomrule")
     lines.append(r"    \end{tabular}%")
@@ -128,24 +119,27 @@ def generate_table(dataset):
 def main():
     """Main function."""
     datasets = ['nolima', 'pg19', 'wikitext']
+    ratios = [0.3, 0.5, 0.7]
 
     output = []
     output.append("% Main Table Results")
     output.append("")
 
     for dataset in datasets:
-        output.append(f"% {'='*60}")
-        output.append(f"% Table: {dataset.capitalize()} Dataset")
-        output.append(f"% {'='*60}")
-        output.append("")
-        output.append(generate_table(dataset))
-        output.append("")
+        for ratio in ratios:
+            ratio_pct = int(ratio * 100)
+            output.append(f"% {'='*60}")
+            output.append(f"% Table: {dataset.capitalize()} Dataset - Compression Ratio {ratio_pct}%")
+            output.append(f"% {'='*60}")
+            output.append("")
+            output.append(generate_table(dataset, ratio))
+            output.append("")
 
     # Write to file
     with open('main_table.tex', 'w') as f:
         f.write('\n'.join(output))
 
-    print("Generated main_table.tex")
+    print("Generated main_table.tex (9 tables)")
 
 if __name__ == "__main__":
     main()
