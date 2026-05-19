@@ -3,7 +3,8 @@
 A novel two-stage framework for training-free KV cache compression that introduces a refinement mechanism to correct errors from initial compression decisions.
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![License](https://img.shields.io/badge/KVpress-CTRPress-red.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CTR Press](https://img.shields.io/badge/KVpress-CTRPress-red.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Paper](https://img.shields.io/badge/Paper-CTRPress-orange.svg)](./ctr_press.pdf)
 
 <!-- Placeholder: Architecture diagram showing the two-stage CTR-Press framework -->
 <p align="center">
