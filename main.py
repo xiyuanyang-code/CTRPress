@@ -1,10 +1,13 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 KV Cache Compression Evaluation Script
 
 统一测试流程：
 - Language Model Metrics: PPL, Position-wise PPL (front, middle, back)
 - Time Efficiency: Prefilling time, TTFT, Time per token, Generation time, Throughput
-- Memory Efficiency: Peak memory usage, KV cache size
+- Memory Efficiency: KV cache size
 
 每个指标重复测量 3 次，记录所有结果
 """
@@ -362,7 +365,6 @@ def evaluate_single_sample(
             "generation_time": metrics.generation_time,
             "throughput": metrics.throughput,
             # Memory Efficiency
-            "peak_memory_usage": metrics.peak_memory_usage,
             "kv_cache_size": metrics.kv_cache_size,
         }
         all_metrics.append(metrics_dict)
@@ -408,7 +410,7 @@ def save_results(results: Dict, output_dir: str, run_dir_name: str):
     metric_keys = [
         "ppl", "front_ppl", "middle_ppl", "back_ppl",
         "prefilling_time", "ttft", "time_per_token", "generation_time", "throughput",
-        "peak_memory_usage", "kv_cache_size",
+        "kv_cache_size",
     ]
 
     for key in metric_keys:
@@ -560,7 +562,6 @@ def main():
         print(f"  Prefilling Time: {np.mean([m['prefilling_time'] for m in all_metrics]):.3f}s")
         print(f"  TTFT: {np.mean([m['ttft'] for m in all_metrics]):.3f}s")
         print(f"  Throughput: {np.mean([m['throughput'] for m in all_metrics]):.2f} tokens/s")
-        print(f"  Peak Memory: {np.mean([m['peak_memory_usage'] for m in all_metrics]):.2f} GB")
         print(f"  KV Cache Size: {np.mean([m['kv_cache_size'] for m in all_metrics]):.2f} GB")
     print(f"\nResults saved to: {run_dir}")
 

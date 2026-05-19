@@ -1,10 +1,13 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 KV Cache Compression Evaluator
 
 核心指标测量：
 - Language Model Metrics: PPL, Position-wise PPL
 - Time Efficiency: Prefilling time, TTFT, Time per token, Generation time, Throughput
-- Memory Efficiency: Peak memory usage, KV cache size
+- Memory Efficiency: KV cache size
 """
 
 import torch
@@ -32,7 +35,6 @@ class EvaluationMetrics:
     throughput: float
 
     # Memory Efficiency (GB)
-    peak_memory_usage: float
     kv_cache_size: float
 
 
@@ -327,34 +329,6 @@ class KVCacheEvaluator:
         throughput = n_tokens / elapsed
         return throughput
 
-    def measure_peak_memory(self, text: str, press=None) -> float:
-        """
-        测量峰值内存使用
-
-        Args:
-            text: 输入文本
-            press: KV cache 压缩方法
-
-        Returns:
-            峰值内存使用（GB）
-        """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-
-        # 重置内存统计
-        torch.cuda.reset_peak_memory_stats()
-        torch.cuda.empty_cache()
-
-        # 测量峰值内存
-        with torch.no_grad():
-            if press:
-                with press(self.model):
-                    outputs = self.model(**inputs)
-            else:
-                outputs = self.model(**inputs)
-
-        peak_memory = torch.cuda.max_memory_allocated() / 1024**3  # 转换为 GB
-        return peak_memory
-
     def measure_kv_cache_size(self, text: str, press=None) -> float:
         """
         测量 KV cache 大小
@@ -412,7 +386,6 @@ class KVCacheEvaluator:
         throughput = n_tokens / generation_time
 
         # Memory Efficiency
-        peak_memory_usage = self.measure_peak_memory(text, press)
         kv_cache_size = self.measure_kv_cache_size(text, press)
 
         return EvaluationMetrics(
@@ -425,7 +398,6 @@ class KVCacheEvaluator:
             time_per_token=time_per_token,
             generation_time=generation_time,
             throughput=throughput,
-            peak_memory_usage=peak_memory_usage,
             kv_cache_size=kv_cache_size
         )
 
@@ -458,7 +430,6 @@ class KVCacheEvaluator:
             "time_per_token": np.mean([m.time_per_token for m in all_metrics]),
             "generation_time": np.mean([m.generation_time for m in all_metrics]),
             "throughput": np.mean([m.throughput for m in all_metrics]),
-            "peak_memory_usage": np.mean([m.peak_memory_usage for m in all_metrics]),
             "kv_cache_size": np.mean([m.kv_cache_size for m in all_metrics]),
         }
 
@@ -498,7 +469,6 @@ def main():
         print(f"  TTFT: {metrics.ttft:.3f}s")
         print(f"  Time per Token: {metrics.time_per_token:.2f}ms")
         print(f"  Throughput: {metrics.throughput:.2f} tokens/s")
-        print(f"  Peak Memory: {metrics.peak_memory_usage:.2f}GB")
         print(f"  KV Cache Size: {metrics.kv_cache_size:.2f}GB")
 
 
