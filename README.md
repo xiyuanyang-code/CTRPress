@@ -5,6 +5,10 @@ A novel two-stage framework for training-free KV cache compression that introduc
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License](https://img.shields.io/badge/KVpress-CTRPress-red.svg)](https://opensource.org/licenses/Apache-2.0)
 
+<!-- Placeholder: Architecture diagram showing the two-stage CTR-Press framework -->
+<p align="center">
+  <img src="./assets/main.png" alt="CTR-Press Architecture" width="900"/>
+</p>
 
 ## Table of Contents
 
@@ -48,12 +52,27 @@ Moreover, even within a single layer, first-pass scoring based solely on local a
 
 We propose **CTR-Press** (Compress-then-Refine), a training-free KV cache compression framework that introduces a **two-pass refinement mechanism**.
 
-<!-- Placeholder: Architecture diagram showing the two-stage CTR-Press framework -->
-<p align="center">
-  <img src="./assets/main.png" alt="CTR-Press Architecture" width="900"/>
-</p>
-
 **Key Insight**: The first-pass compressed cache, when treated as a summary of the full context, reveals which discarded tokens contain information that the summary fails to capture. By comparing discarded tokens against the compressed cache, we can selectively rescue high-value tokens that were incorrectly discarded in the first pass.
+
+**Core Formulation**:
+
+CTR-Press consists of two stages:
+
+**Stage I — Query-Aware Semantic Merging**: Each token is scored by combining query-aware attention with semantic modulation:
+
+$$
+s_i = \underbrace{\left(\alpha \, \mathrm{mean}_{q} A_{q,i} + (1-\alpha) \, \max_{q} A_{q,i}\right)}_{\text{Query-aware}} \cdot \underbrace{\left(1 + \lambda_{\mathrm{sem}} \tanh(w_i^{\mathrm{sem}})\right)}_{\text{Semantic modulation}}
+$$
+
+Discarded values are merged into retained neighbors via $V'_j = \frac{V_j + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r V_r}{1 + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r}$.
+
+**Stage II — Entropy-Guided Refinement**: The retention budget is adapted per-layer based on score entropy:
+
+$$
+N_{\mathrm{keep}}^{\mathrm{adapt}} = N_{\mathrm{keep}} \left(1 + \beta\left(1 - \frac{2\mathcal{E}}{\log L}\right)\right), \quad \mathcal{E} = -\sum_i p_i \log p_i
+$$
+
+High-value discarded tokens are rescued via $\rho_i = \max_{h,q} \mathrm{softmax}(Q_{h,q} (K^r_i)^{\top})$ and merged back.
 
 
 ## Quick Setup
