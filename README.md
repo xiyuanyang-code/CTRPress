@@ -64,7 +64,11 @@ $$
 s_i = \underbrace{\left(\alpha \, \mathrm{mean}_{q} A_{q,i} + (1-\alpha) \, \max_{q} A_{q,i}\right)}_{\text{Query-aware}} \cdot \underbrace{\left(1 + \lambda_{\mathrm{sem}} \tanh(w_i^{\mathrm{sem}})\right)}_{\text{Semantic modulation}}
 $$
 
-Discarded values are merged into retained neighbors via $V'_j = \frac{V_j + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r V_r}{1 + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r}$.
+Discarded values are merged into retained neighbors via:
+
+$$
+V'_j = \frac{V_j + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r V_r}{1 + \gamma \sum_{r \in \mathcal{R}(j)} \omega_r}
+$$
 
 **Stage II — Entropy-Guided Refinement**: The retention budget is adapted per-layer based on score entropy:
 
