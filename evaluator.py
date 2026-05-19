@@ -5,7 +5,7 @@
 KV Cache Compression Evaluator
 
 核心指标测量：
-- Language Model Metrics: PPL, Position-wise PPL
+- Language Model Metrics: PPL
 - Time Efficiency: Prefilling time, TTFT, Time per token, Generation time, Throughput
 - Memory Efficiency: KV cache size
 """
@@ -23,18 +23,15 @@ class EvaluationMetrics:
     """评估指标数据类"""
     # Language Model Metrics
     ppl: float
-    front_ppl: float
-    middle_ppl: float
-    back_ppl: float
 
-    # Time Efficiency (seconds)
+    # Time Efficiency (milliseconds)
     prefilling_time: float
     ttft: float
     time_per_token: float
     generation_time: float
     throughput: float
 
-    # Memory Efficiency (GB)
+    # Memory Efficiency (MB)
     kv_cache_size: float
 
 
@@ -57,10 +54,29 @@ class KVCacheEvaluator:
         self.eval_length = eval_length
         self.model = AutoModelForCausalLM.from_pretrained(
             model_path,
-            dtype=torch.float16,
+            torch_dtype=torch.bfloat16,
             device_map=device
         )
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+    def _tokenize_once(self, text: str) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        只 tokenize 一次，只取需要的长度
+
+        Args:
+            text: 输入文本
+
+        Returns:
+            (input_ids, attention_mask) tensors (已在 GPU 上)
+        """
+        total_needed = self.prompt_length + self.eval_length
+        inputs = self.tokenizer(
+            text,
+            return_tensors="pt",
+            max_length=total_needed,
+            truncation=True
+        ).to(self.device)
+        return inputs["input_ids"], inputs["attention_mask"]
 
     def _get_language_model(self):
         """获取 backbone language model，适配不同架构"""
@@ -69,7 +85,7 @@ class KVCacheEvaluator:
             return self.model.gpt_neox
         return self.model.model
 
-    def calculate_ppl(self, text: str, press=None) -> float:
+    def calculate_ppl(self, input_ids: torch.Tensor, press=None) -> float:
         """
         计算困惑度
 
@@ -77,23 +93,12 @@ class KVCacheEvaluator:
         2. 用压缩后的 KV cache 计算接下来 eval_length 个 token 的 PPL
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
             press: KV cache 压缩方法
 
         Returns:
             PPL 值
         """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        input_ids = inputs["input_ids"]
-        seq_len = input_ids.shape[1]
-
-        total_needed = self.prompt_length + self.eval_length
-        if seq_len < total_needed:
-            raise ValueError(
-                f"Input has {seq_len} tokens, need at least {total_needed} "
-                f"(prompt={self.prompt_length} + eval={self.eval_length})"
-            )
-
         context_ids = input_ids[:, :self.prompt_length]
         eval_ids = input_ids[:, self.prompt_length:self.prompt_length + self.eval_length]
 
@@ -121,88 +126,17 @@ class KVCacheEvaluator:
         ppl = torch.exp(loss).item()
         return ppl
 
-    def calculate_position_ppl(self, text: str, press=None) -> Tuple[float, float, float]:
-        """
-        计算按位置的困惑度（前、中、后）
-
-        对 prompt_length 的 context 做 prefill + 压缩，然后对 eval_length
-        等分为三段分别计算 PPL：
-        - Front: eval 前 1/3
-        - Middle: eval 中间 1/3
-        - Back: eval 后 1/3
-
-        Args:
-            text: 输入文本
-            press: KV cache 压缩方法
-
-        Returns:
-            (front_ppl, middle_ppl, back_ppl)
-        """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        input_ids = inputs["input_ids"]
-        seq_len = input_ids.shape[1]
-
-        total_needed = self.prompt_length + self.eval_length
-        if seq_len < total_needed:
-            raise ValueError(
-                f"Input has {seq_len} tokens, need at least {total_needed} "
-                f"(prompt={self.prompt_length} + eval={self.eval_length})"
-            )
-
-        context_ids = input_ids[:, :self.prompt_length]
-        eval_ids = input_ids[:, self.prompt_length:self.prompt_length + self.eval_length]
-        segment_len = self.eval_length // 3
-
-        position_ppls = []
-        for i in range(3):
-            seg_start = i * segment_len
-            seg_end = (i + 1) * segment_len if i < 2 else self.eval_length
-
-            seg_eval_ids = eval_ids[:, seg_start:seg_end]
-
-            with torch.no_grad():
-                cache = DynamicCache()
-
-                # Prefill context（带或不带压缩）
-                lm = self._get_language_model()
-                if press:
-                    with press(self.model):
-                        lm(input_ids=context_ids, past_key_values=cache)
-                else:
-                    lm(input_ids=context_ids, past_key_values=cache)
-
-                # 计算该段的 PPL
-                abs_start = self.prompt_length + seg_start
-                abs_end = self.prompt_length + seg_end
-                position_ids = torch.arange(abs_start, abs_end, device=self.device).unsqueeze(0)
-                try:
-                    outputs = self.model(
-                        input_ids=seg_eval_ids,
-                        past_key_values=cache,
-                        position_ids=position_ids,
-                        labels=seg_eval_ids,
-                    )
-                    ppl = torch.exp(outputs.loss).item()
-                except (AssertionError, RuntimeError):
-                    ppl = float("nan")
-
-            position_ppls.append(ppl)
-
-        return tuple(position_ppls)
-
-    def measure_prefilling_time(self, text: str, press=None) -> float:
+    def measure_prefilling_time(self, input_ids: torch.Tensor, press=None) -> float:
         """
         测量预填充时间
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
             press: KV cache 压缩方法
 
         Returns:
-            预填充时间（秒）
+            预填充时间（毫秒）
         """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-
         # 预热
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
@@ -212,27 +146,26 @@ class KVCacheEvaluator:
         with torch.no_grad():
             if press:
                 with press(self.model):
-                    outputs = self.model(**inputs)
+                    outputs = self.model(input_ids=input_ids)
             else:
-                outputs = self.model(**inputs)
+                outputs = self.model(input_ids=input_ids)
         torch.cuda.synchronize()
-        elapsed = time() - start
+        elapsed = (time() - start) * 1000  # 转换为毫秒
 
         return elapsed
 
-    def measure_ttft(self, text: str, press=None) -> float:
+    def measure_ttft(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, press=None) -> float:
         """
         测量 Time to First Token (TTFT)
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
+            attention_mask: 已 tokenize 的 attention_mask tensor (在 GPU 上)
             press: KV cache 压缩方法
 
         Returns:
-            TTFT 时间（秒）
+            TTFT 时间（毫秒）
         """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-
         # 预热
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
@@ -243,35 +176,38 @@ class KVCacheEvaluator:
             if press:
                 with press(self.model):
                     outputs = self.model.generate(
-                        **inputs,
+                        input_ids,
+                        attention_mask=attention_mask,
                         max_new_tokens=1,
-                        do_sample=False
+                        do_sample=False,
+                        pad_token_id=self.tokenizer.eos_token_id
                     )
             else:
                 outputs = self.model.generate(
-                    **inputs,
+                    input_ids,
+                    attention_mask=attention_mask,
                     max_new_tokens=1,
-                    do_sample=False
+                    do_sample=False,
+                    pad_token_id=self.tokenizer.eos_token_id
                 )
         torch.cuda.synchronize()
-        elapsed = time() - start
+        elapsed = (time() - start) * 1000  # 转换为毫秒
 
         return elapsed
 
-    def measure_generation_time(self, text: str, max_new_tokens: int = 100, press=None) -> Tuple[float, int]:
+    def measure_generation_time(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, max_new_tokens: int = 100, press=None) -> Tuple[float, int]:
         """
         测量生成时间
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
+            attention_mask: 已 tokenize 的 attention_mask tensor (在 GPU 上)
             max_new_tokens: 生成的最大 token 数
             press: KV cache 压缩方法
 
         Returns:
-            (生成时间, 生成的 token 数)
+            (生成时间（毫秒）, 生成的 token 数)
         """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-
         # 预热
         torch.cuda.synchronize()
         torch.cuda.empty_cache()
@@ -282,66 +218,70 @@ class KVCacheEvaluator:
             if press:
                 with press(self.model):
                     outputs = self.model.generate(
-                        **inputs,
+                        input_ids,
+                        attention_mask=attention_mask,
                         max_new_tokens=max_new_tokens,
-                        do_sample=False
+                        do_sample=False,
+                        pad_token_id=self.tokenizer.eos_token_id
                     )
             else:
                 outputs = self.model.generate(
-                    **inputs,
+                    input_ids,
+                    attention_mask=attention_mask,
                     max_new_tokens=max_new_tokens,
-                    do_sample=False
+                    do_sample=False,
+                    pad_token_id=self.tokenizer.eos_token_id
                 )
         torch.cuda.synchronize()
-        elapsed = time() - start
+        elapsed = (time() - start) * 1000  # 转换为毫秒
 
-        n_generated = outputs.shape[1] - inputs["input_ids"].shape[1]
+        n_generated = outputs.shape[1] - input_ids.shape[1]
         return elapsed, n_generated
 
-    def measure_time_per_token(self, text: str, max_new_tokens: int = 100, press=None) -> float:
+    def measure_time_per_token(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, max_new_tokens: int = 100, press=None) -> float:
         """
         测量每 token 生成时间
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
+            attention_mask: 已 tokenize 的 attention_mask tensor (在 GPU 上)
             max_new_tokens: 生成的最大 token 数
             press: KV cache 压缩方法
 
         Returns:
             每 token 生成时间（毫秒）
         """
-        elapsed, n_tokens = self.measure_generation_time(text, max_new_tokens, press)
-        return elapsed / n_tokens * 1000  # 转换为毫秒
+        elapsed, n_tokens = self.measure_generation_time(input_ids, attention_mask, max_new_tokens, press)
+        return elapsed / n_tokens  # 已经是毫秒
 
-    def measure_throughput(self, text: str, max_new_tokens: int = 100, press=None) -> float:
+    def measure_throughput(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, max_new_tokens: int = 100, press=None) -> float:
         """
         测量吞吐量
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
+            attention_mask: 已 tokenize 的 attention_mask tensor (在 GPU 上)
             max_new_tokens: 生成的最大 token 数
             press: KV cache 压缩方法
 
         Returns:
             吞吐量（tokens/second）
         """
-        elapsed, n_tokens = self.measure_generation_time(text, max_new_tokens, press)
-        throughput = n_tokens / elapsed
+        elapsed, n_tokens = self.measure_generation_time(input_ids, attention_mask, max_new_tokens, press)
+        throughput = n_tokens / (elapsed / 1000)  # elapsed 是毫秒，转换为秒
         return throughput
 
-    def measure_kv_cache_size(self, text: str, press=None) -> float:
+    def measure_kv_cache_size(self, input_ids: torch.Tensor, press=None) -> float:
         """
         测量 KV cache 大小
 
         Args:
-            text: 输入文本
+            input_ids: 已 tokenize 的 input_ids tensor (在 GPU 上)
             press: KV cache 压缩方法
 
         Returns:
-            KV cache 大小（GB）
+            KV cache 大小（MB）
         """
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-
         # 清空缓存
         torch.cuda.empty_cache()
         cache = DynamicCache()
@@ -350,9 +290,9 @@ class KVCacheEvaluator:
         with torch.no_grad():
             if press:
                 with press(self.model):
-                    outputs = self.model(**inputs, past_key_values=cache)
+                    outputs = self.model(input_ids=input_ids, past_key_values=cache)
             else:
-                outputs = self.model(**inputs, past_key_values=cache)
+                outputs = self.model(input_ids=input_ids, past_key_values=cache)
 
         # 计算 cache 大小
         cache_size = 0
@@ -360,7 +300,7 @@ class KVCacheEvaluator:
             cache_size += layer.keys.element_size() * layer.keys.nelement()
             cache_size += layer.values.element_size() * layer.values.nelement()
 
-        return cache_size / 1024**3  # 转换为 GB
+        return cache_size / 1024**2  # 转换为 MB
 
     def evaluate(self, text: str, press=None, max_new_tokens: int = 100) -> EvaluationMetrics:
         """
@@ -374,25 +314,24 @@ class KVCacheEvaluator:
         Returns:
             评估指标
         """
+        # 只 tokenize 一次
+        input_ids, attention_mask = self._tokenize_once(text)
+
         # Language Model Metrics
-        ppl = self.calculate_ppl(text, press)
-        front_ppl, middle_ppl, back_ppl = self.calculate_position_ppl(text, press)
+        ppl = self.calculate_ppl(input_ids, press)
 
         # Time Efficiency
-        prefilling_time = self.measure_prefilling_time(text, press)
-        ttft = self.measure_ttft(text, press)
-        time_per_token = self.measure_time_per_token(text, max_new_tokens, press)
-        generation_time, n_tokens = self.measure_generation_time(text, max_new_tokens, press)
-        throughput = n_tokens / generation_time
+        prefilling_time = self.measure_prefilling_time(input_ids, press)
+        ttft = self.measure_ttft(input_ids, attention_mask, press)
+        time_per_token = self.measure_time_per_token(input_ids, attention_mask, max_new_tokens, press)
+        generation_time, n_tokens = self.measure_generation_time(input_ids, attention_mask, max_new_tokens, press)
+        throughput = n_tokens / (generation_time / 1000)  # generation_time 是毫秒
 
         # Memory Efficiency
-        kv_cache_size = self.measure_kv_cache_size(text, press)
+        kv_cache_size = self.measure_kv_cache_size(input_ids, press)
 
         return EvaluationMetrics(
             ppl=ppl,
-            front_ppl=front_ppl,
-            middle_ppl=middle_ppl,
-            back_ppl=back_ppl,
             prefilling_time=prefilling_time,
             ttft=ttft,
             time_per_token=time_per_token,
@@ -422,9 +361,6 @@ class KVCacheEvaluator:
         # 计算平均值
         avg_metrics = {
             "ppl": np.mean([m.ppl for m in all_metrics]),
-            "front_ppl": np.mean([m.front_ppl for m in all_metrics]),
-            "middle_ppl": np.mean([m.middle_ppl for m in all_metrics]),
-            "back_ppl": np.mean([m.back_ppl for m in all_metrics]),
             "prefilling_time": np.mean([m.prefilling_time for m in all_metrics]),
             "ttft": np.mean([m.ttft for m in all_metrics]),
             "time_per_token": np.mean([m.time_per_token for m in all_metrics]),
@@ -464,12 +400,11 @@ def main():
         results[name] = metrics
 
         print(f"  PPL: {metrics.ppl:.2f}")
-        print(f"  Position PPL (F/M/B): {metrics.front_ppl:.2f}/{metrics.middle_ppl:.2f}/{metrics.back_ppl:.2f}")
-        print(f"  Prefilling Time: {metrics.prefilling_time:.3f}s")
-        print(f"  TTFT: {metrics.ttft:.3f}s")
+        print(f"  Prefilling Time: {metrics.prefilling_time:.2f}ms")
+        print(f"  TTFT: {metrics.ttft:.2f}ms")
         print(f"  Time per Token: {metrics.time_per_token:.2f}ms")
         print(f"  Throughput: {metrics.throughput:.2f} tokens/s")
-        print(f"  KV Cache Size: {metrics.kv_cache_size:.2f}GB")
+        print(f"  KV Cache Size: {metrics.kv_cache_size:.2f}MB")
 
 
 if __name__ == "__main__":

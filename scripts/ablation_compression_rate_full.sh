@@ -4,16 +4,15 @@
 # Fixed: pythia model, pg19 dataset
 # Variable: compression ratio (100 points from 0.01 to 0.99)
 
-# Usage: bash ablation_compression_rate.sh <PRESS_METHOD>
-# Example: bash ablation_compression_rate.sh snapkv
+# Usage: bash ablation_compression_rate_full.sh <PRESS_METHOD>
+# Example: bash ablation_compression_rate_full.sh snapkv
 
+# ("ctr" "random" "qsm" "snapkv" "pyramidkv")
 PRESS_METHOD=$1
 
 if [ -z "$PRESS_METHOD" ]; then
-    echo "Usage: bash run_full.sh <MODEL> <PRESS_METHOD>"
-    echo "  MODEL: pythia | qwen_3_1.7b"
-    echo "  PRESS_METHOD: no_compress | random | streaming_llm | snapkv | lagkv | keydiff | pyramidkv"
-    echo "               query_aware | qa_semantic | qa_merge | qsm | ctr | ctr_refine | ctr_semantic"
+    echo "Usage: bash ablation_compression_rate_full.sh <PRESS_METHOD>"
+    echo "  Available methods: ctr, random, qsm, snapkv, pyramidkv"
     exit 1
 fi
 
@@ -34,22 +33,22 @@ echo "========================================"
 
 for COMPRESSION_RATIO in $COMPRESSION_RATIOS; do
 
-    echo "----------------------------------------"
-    echo "Ratio: $COMPRESSION_RATIO"
-    echo "----------------------------------------"
+  echo "----------------------------------------"
+  echo "Method: $PRESS_METHOD | Ratio: $COMPRESSION_RATIO"
+  echo "----------------------------------------"
 
-    python main.py \
-        --dataset "$DATASET" \
-        --model "$MODEL" \
-        --compress_ratio "$COMPRESSION_RATIO" \
-        --press_method "$PRESS_METHOD" \
-        --max_new_tokens "$MAX_NEW_TOKENS" \
-        --prompt_length "$PROMPT_LENGTH" \
-        --eval_length "$EVAL_LENGTH" \
-        --n_repeats 1 \
-        --max_samples 1 \
-        --output_dir results_ablation_full
+  python main.py \
+      --dataset "$DATASET" \
+      --model "$MODEL" \
+      --compress_ratio "$COMPRESSION_RATIO" \
+      --press_method "$PRESS_METHOD" \
+      --max_new_tokens "$MAX_NEW_TOKENS" \
+      --prompt_length "$PROMPT_LENGTH" \
+      --eval_length "$EVAL_LENGTH" \
+      --n_repeats 1 \
+      --max_samples 1 \
+      --output_dir results_ablation_compression_rate
 
 done
 
-echo "All experiments completed for $MODEL + $DATASET + $PRESS_METHOD!"
+echo "All compression rate ablations completed for $PRESS_METHOD!"

@@ -21,12 +21,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import cProfile
+
 import numpy as np
 import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, DynamicCache
 
 from evaluator import KVCacheEvaluator, EvaluationMetrics
+from visualize import CompressionVisualizer
 
 
 def parse_args():
@@ -60,7 +63,7 @@ def parse_args():
         "--model",
         type=str,
         required=True,
-        choices=["pythia", "qwen_3_1.7b"],
+        choices=["pythia", "qwen_3_0.6b", "qwen_3_1.7b", "qwen_3_4b", "qwen_3_8b", "qwen_3_14b"],
         help="Model to use"
     )
 
@@ -125,6 +128,18 @@ def parse_args():
         help="Output directory for results"
     )
 
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="Generate compression heatmap visualization"
+    )
+
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="Enable cProfile profiling"
+    )
+
     return parser.parse_args()
 
 
@@ -133,7 +148,11 @@ def get_model_path(model_name: str) -> str:
     base_path = "/data/xiyuanyang/EfficientNLP/models"
     model_paths = {
         "pythia": os.path.join(base_path, "pythia"),
+        "qwen_3_0.6b": os.path.join(base_path, "qwen_3_0.6b"),
         "qwen_3_1.7b": os.path.join(base_path, "qwen_3_1.7b"),
+        "qwen_3_4b": os.path.join(base_path, "qwen_3_4b"),
+        "qwen_3_8b": os.path.join(base_path, "qwen_3_8b"),
+        "qwen_3_14b": os.path.join(base_path, "qwen_3_14b"),
     }
     return model_paths[model_name]
 
@@ -355,9 +374,6 @@ def evaluate_single_sample(
             "repeat": repeat_idx + 1,
             # Language Model Metrics
             "ppl": metrics.ppl,
-            "front_ppl": metrics.front_ppl,
-            "middle_ppl": metrics.middle_ppl,
-            "back_ppl": metrics.back_ppl,
             # Time Efficiency
             "prefilling_time": metrics.prefilling_time,
             "ttft": metrics.ttft,
@@ -408,7 +424,7 @@ def save_results(results: Dict, output_dir: str, run_dir_name: str):
     # 计算每个指标的平均值和标准差
     all_metrics = [m for sample in results["samples"] for m in sample["metrics"]]
     metric_keys = [
-        "ppl", "front_ppl", "middle_ppl", "back_ppl",
+        "ppl",
         "prefilling_time", "ttft", "time_per_token", "generation_time", "throughput",
         "kv_cache_size",
     ]
@@ -467,6 +483,7 @@ def main():
     )
 
     # 自适应 prompt_length：当数据集文本普遍较短时自动降低
+    # 使用 tokenizer 的 __call__ 方法获取 token 长度（不返回 tensors，更省内存）
     sample_token_lens = [len(evaluator.tokenizer(s["text"])["input_ids"]) for s in data]
     max_text_tokens = max(sample_token_lens) if sample_token_lens else 0
     min_required = args.prompt_length + args.eval_length
@@ -477,6 +494,9 @@ def main():
         args.prompt_length = new_prompt_length
         evaluator.prompt_length = new_prompt_length
     print(f"Model loaded successfully (prompt={args.prompt_length}, eval={args.eval_length})")
+
+    # 预先计算所有样本的 token 长度，避免重复 tokenize
+    sample_token_lens = [len(evaluator.tokenizer(s["text"])["input_ids"]) for s in data]
 
     # 创建 press
     print("\nCreating press...")
@@ -508,7 +528,7 @@ def main():
         metadata = sample.get("metadata", {})
 
         # 跳过太短的样本（需要足够的 prompt + eval tokens）
-        n_tokens = len(evaluator.tokenizer(text)["input_ids"])
+        n_tokens = sample_token_lens[sample_idx]
         min_tokens = args.prompt_length + args.eval_length
         if n_tokens < min_tokens:
             print(f"    Skipping sample (only {n_tokens} tokens, need {min_tokens})")
@@ -523,6 +543,33 @@ def main():
             args.max_new_tokens,
             args.n_repeats,
         )
+
+        # 可视化压缩热力图（如果启用）
+        if args.visualize and sample_idx == 0:  # 只对第一个样本可视化
+            print("    Generating compression heatmap...")
+            viz_dir = os.path.join(args.output_dir, "visualizations")
+            os.makedirs(viz_dir, exist_ok=True)
+
+            visualizer = CompressionVisualizer(evaluator.model, evaluator.tokenizer)
+
+            # 记录压缩
+            compression_matrix = visualizer.record_compression(
+                evaluator._tokenize_once(text)[0],
+                press,
+                args.prompt_length
+            )
+
+            # 保存热力图
+            heatmap_path = os.path.join(
+                viz_dir,
+                f"{args.model}_{args.press_method}_ratio{args.compress_ratio}.png"
+            )
+            visualizer.plot_compression_heatmap(
+                compression_matrix,
+                args.press_method,
+                args.compress_ratio,
+                heatmap_path
+            )
 
         # 记录结果
         sample_result = {
@@ -539,7 +586,7 @@ def main():
         avg_ppl = np.mean([m["ppl"] for m in metrics])
         avg_ttft = np.mean([m["ttft"] for m in metrics])
         avg_throughput = np.mean([m["throughput"] for m in metrics])
-        print(f"    Avg PPL: {avg_ppl:.2f}, Avg TTFT: {avg_ttft:.3f}s, Avg Throughput: {avg_throughput:.2f} tokens/s")
+        print(f"    Avg PPL: {avg_ppl:.2f}, Avg TTFT: {avg_ttft:.2f}ms, Avg Throughput: {avg_throughput:.2f} tokens/s")
 
     # 保存结果
     print("\nSaving results...")
@@ -559,12 +606,29 @@ def main():
     else:
         print(f"\nAverage metrics:")
         print(f"  PPL: {np.mean([m['ppl'] for m in all_metrics]):.2f}")
-        print(f"  Prefilling Time: {np.mean([m['prefilling_time'] for m in all_metrics]):.3f}s")
-        print(f"  TTFT: {np.mean([m['ttft'] for m in all_metrics]):.3f}s")
+        print(f"  Prefilling Time: {np.mean([m['prefilling_time'] for m in all_metrics]):.2f}ms")
+        print(f"  TTFT: {np.mean([m['ttft'] for m in all_metrics]):.2f}ms")
         print(f"  Throughput: {np.mean([m['throughput'] for m in all_metrics]):.2f} tokens/s")
-        print(f"  KV Cache Size: {np.mean([m['kv_cache_size'] for m in all_metrics]):.2f} GB")
+        print(f"  KV Cache Size: {np.mean([m['kv_cache_size'] for m in all_metrics]):.2f}MB")
     print(f"\nResults saved to: {run_dir}")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    # Check if --profile is in arguments
+    if "--profile" in sys.argv:
+        # Remove --profile from args before parsing
+        sys.argv.remove("--profile")
+        profiler = cProfile.Profile()
+        profiler.enable()
+
+        main()
+
+        profiler.disable()
+        profiler.dump_stats("profile.stats")
+        print("\n[Profiling] Results saved to profile.stats")
+        print("[Profiling] View with: python -m pstats profile.stats")
+        print("[Profiling] Or: snakeviz profile.stats (pip install snakeviz)")
+    else:
+        main()
